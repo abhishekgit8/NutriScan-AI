@@ -11,58 +11,79 @@ interface Props {
 export default function BarcodeScanner({ onScan, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const scannerRef = useRef<unknown>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
     let cancelled = false;
 
-    async function init() {
+    async function start() {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
-        if (cancelled) return;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
 
-        const scanner = new Html5Qrcode("barcode-scanner-viewport");
-        scannerRef.current = scanner;
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
 
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
-            aspectRatio: 1.5,
-          },
-          (decodedText: string) => {
-            Promise.resolve(scanner.stop()).catch(() => {});
-            onScan(decodedText);
-          },
-          () => {}
-        );
+        streamRef.current = stream;
 
-        if (!cancelled) setLoading(false);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+
+        if (!("BarcodeDetector" in window)) {
+          setLoading(false);
+          setError("Barcode scanning is not supported on this device. Enter the barcode manually.");
+          return;
+        }
+
+        const detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39"] });
+
+        setLoading(false);
+
+        async function scan() {
+          if (cancelled || !videoRef.current) return;
+          try {
+            const barcodes = await detector.detect(videoRef.current);
+            if (barcodes.length > 0) {
+              const code = barcodes[0].rawValue;
+              cleanup();
+              onScan(code);
+              return;
+            }
+          } catch {
+            // ignore detection errors
+          }
+          rafRef.current = requestAnimationFrame(scan);
+        }
+
+        scan();
       } catch (err) {
         console.error("Camera error:", err);
         if (!cancelled) {
-          setError(
-            "Camera access denied or unavailable. Try entering the barcode manually."
-          );
+          setError("Camera access denied. Enter the barcode manually.");
           setLoading(false);
         }
       }
     }
 
-    init();
-
-    return () => {
+    function cleanup() {
       cancelled = true;
-      const scanner = scannerRef.current as { stop?: () => Promise<void>; clear?: () => Promise<void> } | null;
-      if (scanner) {
-        Promise.resolve(scanner.stop?.()).catch(() => {});
-        Promise.resolve(scanner.clear?.()).catch(() => {});
+      cancelAnimationFrame(rafRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
-    };
+    }
+
+    start();
+
+    return cleanup;
   }, [onScan]);
 
   return (
@@ -70,11 +91,7 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
       <div className="flex items-center justify-between bg-black px-4 py-3">
         <h2 className="text-sm font-medium text-white">Scan Barcode</h2>
         <button
-          onClick={() => {
-            const scanner = scannerRef.current as { stop?: () => Promise<void> } | null;
-            Promise.resolve(scanner?.stop?.()).catch(() => {});
-            onClose();
-          }}
+          onClick={onClose}
           className="rounded-full p-2 text-white/80 hover:bg-white/10"
         >
           <X className="h-5 w-5" />
@@ -82,7 +99,7 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
       </div>
 
       <div className="relative flex-1 overflow-hidden">
-        <div id="barcode-scanner-viewport" ref={containerRef} className="h-full w-full" />
+        <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
 
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
@@ -105,7 +122,7 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
         )}
 
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-[150px] w-[250px] rounded-lg border-2 border-green-400/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />
+          <div className="h-[150px] w-[250px] rounded-lg border-2 border-green-400/60" />
         </div>
       </div>
 
