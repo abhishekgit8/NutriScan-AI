@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import BarcodeInput from "@/components/BarcodeInput";
@@ -52,7 +52,7 @@ function useScanFetcher(barcode: string | null) {
   return { result, loading, error, refetch };
 }
 
-export default function ScanPage() {
+function ScanPageContent() {
   const searchParams = useSearchParams();
   const barcode = searchParams.get("barcode");
   const { user } = useUser();
@@ -142,5 +142,20 @@ export default function ScanPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ScanPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="mx-auto max-w-2xl px-4 py-10">
+          <SkeletonCard />
+        </main>
+      </div>
+    }>
+      <ScanPageContent />
+    </Suspense>
   );
 }
