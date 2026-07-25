@@ -13,24 +13,37 @@ const BarcodeScanner = dynamic(() => import("./BarcodeScanner"), {
 export default function BarcodeInput() {
   const [barcode, setBarcode] = useState("");
   const [showScanner, setShowScanner] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = barcode.trim();
-    if (trimmed) {
-      router.push(`/scan?barcode=${trimmed}`);
+    const cleaned = barcode.replace(/[^0-9]/g, "");
+    if (cleaned.length >= 8) {
+      router.push(`/scan?barcode=${cleaned}`);
     }
   };
 
   const handleScan = (result: string) => {
+    const cleaned = result.replace(/[^0-9]/g, "");
     setShowScanner(false);
-    setBarcode(result);
-    router.push(`/scan?barcode=${result}`);
+    setBarcode(cleaned);
+    if (cleaned.length >= 8) {
+      router.push(`/scan?barcode=${cleaned}`);
+    } else {
+      setScanError(`Scanned "${result}" doesn't look like a product barcode.`);
+    }
   };
 
   return (
     <>
+      {scanError && (
+        <div className="mb-3 w-full max-w-lg rounded-lg bg-red-50 p-3 text-center text-xs text-red-600 dark:bg-red-950/30 dark:text-red-400">
+          {scanError}
+          <button onClick={() => setScanError(null)} className="ml-2 underline">dismiss</button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="w-full max-w-lg">
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -40,14 +53,20 @@ export default function BarcodeInput() {
               inputMode="numeric"
               pattern="[0-9]*"
               value={barcode}
-              onChange={(e) => setBarcode(e.target.value.replace(/[^0-9]/g, ""))}
+              onChange={(e) => {
+                setBarcode(e.target.value.replace(/[^0-9]/g, ""));
+                setScanError(null);
+              }}
               placeholder="Enter barcode number"
               className="w-full rounded-full border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-white dark:placeholder:text-gray-500"
             />
           </div>
           <button
             type="button"
-            onClick={() => setShowScanner(true)}
+            onClick={() => {
+              setScanError(null);
+              setShowScanner(true);
+            }}
             className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-gray-300 dark:hover:bg-gray-800"
           >
             <Camera className="h-4 w-4" />
