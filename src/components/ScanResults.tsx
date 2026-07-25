@@ -6,7 +6,7 @@ import IngredientsList from "./IngredientsList";
 import SummaryPoints from "./SummaryPoints";
 import AlertBanner from "./AlertBanner";
 import ShareButton from "./ShareButton";
-import { Bookmark } from "lucide-react";
+import { Bookmark, ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface Props {
   result: ScanResult;
@@ -56,12 +56,50 @@ export default function ScanResults({ result, onSave, isSaved }: Props) {
 
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
         <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          AI Analysis
+          Summary
         </h3>
         <p className="text-sm leading-relaxed text-[var(--text)]">
           {result.analysis}
         </p>
       </div>
+
+      {(result.pros?.length > 0 || result.cons?.length > 0) && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {result.pros?.length > 0 && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 p-5 dark:border-green-900 dark:bg-green-950/30">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">
+                <ThumbsUp className="h-4 w-4" />
+                Pros
+              </h3>
+              <ul className="space-y-2">
+                {result.pros.map((pro, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-green-800 dark:text-green-300">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />
+                    {pro}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.cons?.length > 0 && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/30">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-red-700 dark:text-red-400">
+                <ThumbsDown className="h-4 w-4" />
+                Cons
+              </h3>
+              <ul className="space-y-2">
+                {result.cons.map((con, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-red-800 dark:text-red-300">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                    {con}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {result.summaryPoints.length > 0 && (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">

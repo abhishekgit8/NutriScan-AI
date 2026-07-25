@@ -5,6 +5,8 @@ export interface ScanResult {
   ingredients: string[];
   healthScore: number;
   analysis: string;
+  pros: string[];
+  cons: string[];
   summaryPoints: string[];
   alertMessage?: string;
   imageUrl?: string;
