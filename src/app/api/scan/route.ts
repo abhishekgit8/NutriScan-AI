@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRedis } from "@/lib/redis";
 import { getSupabaseServiceClient } from "@/lib/supabase";
-import { getPostHogServer } from "@/lib/posthog";
+import { getRedis } from "@/lib/redis";
 
 const OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/api/v2/product";
+
+function getRedisSafe() {
+  try {
+    return getRedis();
+  } catch {
+    return null;
+  }
+}
 
 async function fetchFromOpenFoodFacts(barcode: string) {
   const res = await fetch(`${OPEN_FOOD_FACTS_URL}/${barcode}.json`);
@@ -26,9 +33,11 @@ Ingredients: ${ingredientsText || "Not available"}
 
 Return ONLY valid JSON, no markdown code blocks.`;
 
-  const response = await fetch(
-    "https://router.bynara.id/v1/chat/completions",
-    {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch("https://router.bynara.id/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -39,35 +48,38 @@ Return ONLY valid JSON, no markdown code blocks.`;
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
       }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("NaraRouter error:", errText);
+      throw new Error("AI analysis failed");
     }
-  );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("NaraRouter error:", errText);
-    throw new Error("AI analysis failed");
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error("No AI response content");
+
+    let jsonStr = content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+
+    const parsed = JSON.parse(jsonStr);
+    return {
+      healthScore: Math.min(100, Math.max(1, Number(parsed.healthScore) || 50)),
+      analysis: String(parsed.analysis || "No analysis available."),
+      summaryPoints: Array.isArray(parsed.summaryPoints)
+        ? parsed.summaryPoints.map(String)
+        : [],
+      alertMessage: parsed.alertMessage ? String(parsed.alertMessage) : undefined,
+    };
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
   }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("No AI response content");
-
-  // Try to extract JSON from the response
-  let jsonStr = content;
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[0];
-  }
-
-  const parsed = JSON.parse(jsonStr);
-  return {
-    healthScore: Math.min(100, Math.max(1, Number(parsed.healthScore) || 50)),
-    analysis: String(parsed.analysis || "No analysis available."),
-    summaryPoints: Array.isArray(parsed.summaryPoints)
-      ? parsed.summaryPoints.map(String)
-      : [],
-    alertMessage: parsed.alertMessage ? String(parsed.alertMessage) : undefined,
-  };
 }
 
 async function analyzeWithGemini(productName: string, ingredientsText: string) {
@@ -85,38 +97,71 @@ Ingredients: ${ingredientsText || "Not available"}
 
 Return ONLY valid JSON, no markdown code blocks.`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, responseMimeType: "application/json" },
-      }),
-    }
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
-  if (!response.ok) {
-    throw new Error("Gemini analysis failed");
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, responseMimeType: "application/json" },
+        }),
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timeout);
+
+    if (!response.ok) throw new Error("Gemini analysis failed");
+
+    const data = await response.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) throw new Error("No Gemini response content");
+
+    let jsonStr = content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+
+    const parsed = JSON.parse(jsonStr);
+    return {
+      healthScore: Math.min(100, Math.max(1, Number(parsed.healthScore) || 50)),
+      analysis: String(parsed.analysis || "No analysis available."),
+      summaryPoints: Array.isArray(parsed.summaryPoints)
+        ? parsed.summaryPoints.map(String)
+        : [],
+      alertMessage: parsed.alertMessage ? String(parsed.alertMessage) : undefined,
+    };
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
   }
+}
 
-  const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!content) throw new Error("No Gemini response content");
-
-  let jsonStr = content;
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (jsonMatch) jsonStr = jsonMatch[0];
-
-  const parsed = JSON.parse(jsonStr);
+function buildResult(
+  barcode: string,
+  productName: string,
+  ingredientsText: string,
+  brand: string | undefined,
+  imageUrl: string | undefined,
+  aiResult: { healthScore: number; analysis: string; summaryPoints: string[]; alertMessage?: string }
+) {
   return {
-    healthScore: Math.min(100, Math.max(1, Number(parsed.healthScore) || 50)),
-    analysis: String(parsed.analysis || "No analysis available."),
-    summaryPoints: Array.isArray(parsed.summaryPoints)
-      ? parsed.summaryPoints.map(String)
+    barcode,
+    productName,
+    ingredientsText,
+    ingredients: ingredientsText
+      ? ingredientsText.split(",").map((s: string) => s.trim()).filter(Boolean)
       : [],
-    alertMessage: parsed.alertMessage ? String(parsed.alertMessage) : undefined,
+    healthScore: aiResult.healthScore,
+    analysis: aiResult.analysis,
+    summaryPoints: aiResult.summaryPoints,
+    alertMessage: aiResult.alertMessage,
+    imageUrl,
+    brand,
   };
 }
 
@@ -131,12 +176,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const redis = getRedis();
-
     // 1. Check Redis cache
-    const cached = await redis.get(`scan:${barcode}`);
-    if (cached) {
-      return NextResponse.json(cached);
+    const redis = getRedisSafe();
+    if (redis) {
+      try {
+        const cached = await redis.get(`scan:${barcode}`);
+        if (cached) return NextResponse.json(cached);
+      } catch (e) {
+        console.warn("Redis read failed:", e);
+      }
     }
 
     // 2. Check Supabase
@@ -148,26 +196,41 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (dbProduct) {
-      const result = {
-        barcode: dbProduct.barcode,
-        productName: dbProduct.product_name,
-        ingredientsText: dbProduct.ingredients_text || "",
-        ingredients: dbProduct.ingredients_text
-          ? dbProduct.ingredients_text.split(",").map((s: string) => s.trim())
-          : [],
-        healthScore: dbProduct.health_score,
-        analysis: dbProduct.analysis || "",
-        summaryPoints: [],
-        brand: undefined,
-      };
+      const result = buildResult(
+        dbProduct.barcode,
+        dbProduct.product_name,
+        dbProduct.ingredients_text || "",
+        undefined,
+        undefined,
+        {
+          healthScore: dbProduct.health_score,
+          analysis: dbProduct.analysis || "",
+          summaryPoints: [],
+        }
+      );
 
-      // Cache to Redis for 24h
-      await redis.set(`scan:${barcode}`, result, { ex: 86400 });
+      if (redis) {
+        try {
+          await redis.set(`scan:${barcode}`, result, { ex: 86400 });
+        } catch (e) {
+          console.warn("Redis write failed:", e);
+        }
+      }
+
       return NextResponse.json(result);
     }
 
     // 3. Fetch from Open Food Facts
-    const offData = await fetchFromOpenFoodFacts(barcode);
+    let offData;
+    try {
+      offData = await fetchFromOpenFoodFacts(barcode);
+    } catch (e) {
+      console.error("Open Food Facts fetch failed:", e);
+      return NextResponse.json(
+        { error: "Failed to fetch product data. Please try again." },
+        { status: 502 }
+      );
+    }
 
     if (offData.status !== 1 || !offData.product) {
       return NextResponse.json(
@@ -202,53 +265,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const result = {
-      barcode,
-      productName,
-      ingredientsText,
-      ingredients: ingredientsText
-        ? ingredientsText.split(",").map((s: string) => s.trim())
-        : [],
-      healthScore: aiResult.healthScore,
-      analysis: aiResult.analysis,
-      summaryPoints: aiResult.summaryPoints,
-      alertMessage: aiResult.alertMessage,
-      imageUrl,
-      brand,
-    };
+    const result = buildResult(barcode, productName, ingredientsText, brand, imageUrl, aiResult);
 
     // 5. Cache to Redis (24h)
-    await redis.set(`scan:${barcode}`, result, { ex: 86400 });
+    if (redis) {
+      try {
+        await redis.set(`scan:${barcode}`, result, { ex: 86400 });
+      } catch (e) {
+        console.warn("Redis write failed:", e);
+      }
+    }
 
     // 6. Cache to Supabase
-    await supabase.from("cached_products").upsert(
-      {
-        barcode,
-        product_name: productName,
-        ingredients_text: ingredientsText,
-        analysis: aiResult.analysis,
-        health_score: aiResult.healthScore,
-      },
-      { onConflict: "barcode" }
-    );
-
-    // 7. Track analytics
     try {
-      const posthog = getPostHogServer();
-      posthog.capture({
-        distinctId: "anonymous",
-        event: "product_scanned",
-        properties: { barcode, productName, healthScore: aiResult.healthScore },
-      });
-    } catch {
-      // analytics failure is non-critical
+      await supabase.from("cached_products").upsert(
+        {
+          barcode,
+          product_name: productName,
+          ingredients_text: ingredientsText,
+          analysis: aiResult.analysis,
+          health_score: aiResult.healthScore,
+        },
+        { onConflict: "barcode" }
+      );
+    } catch (e) {
+      console.warn("Supabase write failed:", e);
     }
 
     return NextResponse.json(result);
   } catch (err) {
     console.error("Scan error:", err);
     return NextResponse.json(
-      { error: "Internal server error. Please try again." },
+      { error: "Something went wrong. Please try again." },
       { status: 500 }
     );
   }
