@@ -6,7 +6,7 @@ import IngredientsList from "./IngredientsList";
 import SummaryPoints from "./SummaryPoints";
 import AlertBanner from "./AlertBanner";
 import ShareButton from "./ShareButton";
-import { Save, Bookmark } from "lucide-react";
+import { Bookmark } from "lucide-react";
 
 interface Props {
   result: ScanResult;
@@ -16,28 +16,26 @@ interface Props {
 
 export default function ScanResults({ result, onSave, isSaved }: Props) {
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-sm">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">{result.productName}</h2>
+    <div className="animate-fade-in space-y-4">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold md:text-2xl">{result.productName}</h2>
             {result.brand && (
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
                 {result.brand}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             {onSave && (
               <button
                 onClick={onSave}
-                className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm transition hover:bg-[var(--bg-secondary)]"
+                className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition hover:bg-gray-50 dark:hover:bg-gray-800"
               >
-                {isSaved ? (
-                  <Bookmark className="h-4 w-4 fill-indigo-500 text-indigo-500" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
+                <Bookmark
+                  className={`h-3.5 w-3.5 ${isSaved ? "fill-green-600 text-green-600" : ""}`}
+                />
                 {isSaved ? "Saved" : "Save"}
               </button>
             )}
@@ -49,31 +47,37 @@ export default function ScanResults({ result, onSave, isSaved }: Props) {
           </div>
         </div>
 
-        <div className="mt-6 flex justify-center">
+        <div className="mt-4 flex justify-center">
           <HealthScoreRing score={result.healthScore} />
         </div>
       </div>
 
       {result.alertMessage && <AlertBanner message={result.alertMessage} />}
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-sm">
-        <h3 className="mb-2 text-lg font-semibold">AI Analysis</h3>
-        <p className="leading-relaxed text-[var(--text-secondary)]">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
+        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          AI Analysis
+        </h3>
+        <p className="text-sm leading-relaxed text-[var(--text)]">
           {result.analysis}
         </p>
       </div>
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-sm">
-        <SummaryPoints points={result.summaryPoints} />
-      </div>
+      {result.summaryPoints.length > 0 && (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
+          <SummaryPoints points={result.summaryPoints} />
+        </div>
+      )}
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-sm">
-        <h3 className="mb-3 text-lg font-semibold">Ingredients</h3>
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          Ingredients
+        </h3>
         <IngredientsList ingredients={result.ingredients} />
       </div>
 
       <p className="text-center text-xs text-[var(--text-secondary)]">
-        Barcode: {result.barcode}
+        {result.barcode}
       </p>
     </div>
   );

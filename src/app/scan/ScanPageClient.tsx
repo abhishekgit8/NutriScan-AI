@@ -83,30 +83,27 @@ export default function ScanPageClient() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="mx-auto max-w-2xl px-4 py-10">
-        <div className="mb-8 flex flex-col items-center gap-6">
-          <h1 className="text-3xl font-bold">Scan a Product</h1>
+      <main className="mx-auto max-w-lg px-4 py-8 md:py-12">
+        <div className="mb-8 flex flex-col items-center gap-5">
+          <h1 className="text-2xl font-bold md:text-3xl">Scan a Product</h1>
           <BarcodeInput />
         </div>
 
         {loading && <SkeletonCard />}
 
         {error && (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-800 dark:bg-red-950/30">
-            <AlertCircle className="h-12 w-12 text-red-500" />
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950/30">
+            <AlertCircle className="h-10 w-10 text-red-400" />
             <div>
-              <p className="font-medium text-red-700 dark:text-red-400">
-                Error
-              </p>
-              <p className="mt-1 text-sm text-red-600 dark:text-red-300">
+              <p className="font-medium text-red-600 dark:text-red-400">
                 {error}
               </p>
             </div>
             <button
               onClick={refetch}
-              className="flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm text-white transition hover:bg-red-600"
+              className="flex items-center gap-1.5 rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-3.5 w-3.5" />
               Try Again
             </button>
           </div>
@@ -121,21 +118,16 @@ export default function ScanPageClient() {
         )}
 
         {!loading && !error && !result && barcode && (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-8 text-center">
-            <AlertCircle className="h-12 w-12 text-[var(--text-secondary)]" />
-            <div>
-              <p className="font-medium">Product not found</p>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                No data available for barcode &quot;{barcode}&quot;. Try
-                another one.
-              </p>
-            </div>
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)]">
+              No data found for &quot;{barcode}&quot;. Try another barcode.
+            </p>
           </div>
         )}
 
         {!barcode && !loading && (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-8 text-center">
-            <p className="text-[var(--text-secondary)]">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)]">
               Enter a barcode above to get started.
             </p>
           </div>

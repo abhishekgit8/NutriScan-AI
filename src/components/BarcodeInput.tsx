@@ -17,19 +17,19 @@ export default function BarcodeInput() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-xl">
-      <div className="relative flex items-center">
-        <Search className="absolute left-4 h-5 w-5 text-[var(--text-secondary)]" />
+    <form onSubmit={handleSubmit} className="w-full max-w-lg">
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
-          placeholder="Enter product barcode (e.g., 5449000000996)"
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] py-4 pl-12 pr-32 text-lg shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          placeholder="Enter barcode number"
+          className="w-full rounded-full border border-gray-200 bg-white py-3.5 pl-12 pr-24 text-base shadow-sm transition placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-white dark:placeholder:text-gray-500"
         />
         <button
           type="submit"
-          className="absolute right-2 rounded-lg bg-indigo-500 px-6 py-2.5 font-medium text-white transition hover:bg-indigo-600 disabled:opacity-50"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-green-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-40"
           disabled={!barcode.trim()}
         >
           Scan

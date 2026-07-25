@@ -12,11 +12,11 @@ export default function IngredientsList({ ingredients }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       {ingredients.map((ingredient, i) => (
         <span
           key={i}
-          className="rounded-full border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-1 text-sm"
+          className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
         >
           {ingredient.trim()}
         </span>

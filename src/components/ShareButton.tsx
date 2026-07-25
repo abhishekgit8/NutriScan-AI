@@ -31,12 +31,12 @@ export default function ShareButton({ productName, healthScore, barcode }: Props
   return (
     <button
       onClick={handleShare}
-      className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm transition hover:bg-[var(--bg-secondary)]"
+      className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition hover:bg-gray-50 dark:hover:bg-gray-800"
     >
       {copied ? (
-        <Check className="h-4 w-4 text-green-500" />
+        <Check className="h-3.5 w-3.5 text-green-600" />
       ) : (
-        <Share2 className="h-4 w-4" />
+        <Share2 className="h-3.5 w-3.5" />
       )}
       {copied ? "Copied!" : "Share"}
     </button>
