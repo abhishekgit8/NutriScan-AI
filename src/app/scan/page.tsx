@@ -147,14 +147,16 @@ function ScanPageContent() {
 
 export default function ScanPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen">
-        <Navbar />
-        <main className="mx-auto max-w-2xl px-4 py-10">
-          <SkeletonCard />
-        </main>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen">
+          <Navbar />
+          <main className="mx-auto max-w-2xl px-4 py-10">
+            <SkeletonCard />
+          </main>
+        </div>
+      }
+    >
       <ScanPageContent />
     </Suspense>
   );
