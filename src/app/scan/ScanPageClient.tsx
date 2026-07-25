@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import BarcodeInput from "@/components/BarcodeInput";
 import ScanResults from "@/components/ScanResults";
 import SkeletonCard from "@/components/SkeletonCard";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
 import { ScanResult } from "@/types";
 import { useUser } from "@clerk/nextjs";
 
@@ -14,11 +14,10 @@ function useScanFetcher(barcode: string | null) {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fetchedRef = useRef(new Set<string>());
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    if (!barcode || fetchedRef.current.has(barcode)) return;
-    fetchedRef.current.add(barcode);
+    if (!barcode) return;
 
     const controller = new AbortController();
 
@@ -43,11 +42,11 @@ function useScanFetcher(barcode: string | null) {
 
     run();
     return () => controller.abort();
-  }, [barcode]);
+  }, [barcode, retryCount]);
 
-  const refetch = () => {
-    fetchedRef.current.delete(barcode || "");
-  };
+  const refetch = useCallback(() => {
+    setRetryCount((c) => c + 1);
+  }, []);
 
   return { result, loading, error, refetch };
 }
@@ -55,6 +54,7 @@ function useScanFetcher(barcode: string | null) {
 export default function ScanPageClient() {
   const searchParams = useSearchParams();
   const barcode = searchParams.get("barcode");
+  const router = useRouter();
   const { user } = useUser();
 
   const { result, loading, error, refetch } = useScanFetcher(barcode);
@@ -97,13 +97,22 @@ export default function ScanPageClient() {
             <p className="text-sm font-medium text-red-600 dark:text-red-400">
               {error}
             </p>
-            <button
-              onClick={refetch}
-              className="flex items-center gap-1.5 rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Try Again
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refetch}
+                className="flex items-center gap-1.5 rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Try Again
+              </button>
+              <button
+                onClick={() => router.push("/scan")}
+                className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
+            </div>
           </div>
         )}
 

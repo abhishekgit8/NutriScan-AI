@@ -53,7 +53,7 @@ function analyzeIngredients(ingredientsText: string): {
   healthScore: number;
   analysis: string;
   summaryPoints: string[];
-  alertMessage: string | null;
+  alertMessage: string | undefined;
   pros: string[];
   cons: string[];
 } {
@@ -63,7 +63,7 @@ function analyzeIngredients(ingredientsText: string): {
   let score = 60; // start neutral
   const pros: string[] = [];
   const cons: string[] = [];
-  let alertMessage: string | null = null;
+  let alertMessage: string | undefined;
   const alertIssues: string[] = [];
 
   // Check positive keywords
@@ -316,12 +316,41 @@ export async function GET(request: NextRequest) {
           : [],
         healthScore: dbProduct.health_score,
         analysis: dbProduct.analysis || "",
-        pros: [],
-        cons: [],
-        summaryPoints: [],
+        pros: [] as string[],
+        cons: [] as string[],
+        summaryPoints: [] as string[],
         alertMessage: undefined as string | undefined,
         brand: undefined as string | undefined,
       };
+
+      // Re-analyze if cached product has empty analysis
+      if (!result.analysis && result.ingredientsText) {
+        console.log(`Re-analyzing cached product: ${result.productName}`);
+        let reAnalysis;
+        try {
+          reAnalysis = await analyzeWithAI(result.productName, result.ingredientsText);
+        } catch {
+          try {
+            reAnalysis = await analyzeWithGemini(result.productName, result.ingredientsText);
+          } catch {
+            reAnalysis = analyzeIngredients(result.ingredientsText);
+          }
+        }
+        result.healthScore = reAnalysis.healthScore;
+        result.analysis = reAnalysis.analysis;
+        result.pros = reAnalysis.pros || [];
+        result.cons = reAnalysis.cons || [];
+        result.summaryPoints = reAnalysis.summaryPoints || [];
+        result.alertMessage = reAnalysis.alertMessage;
+
+        // Update cache with fresh analysis
+        try {
+          await supabase.from("cached_products").update({
+            analysis: reAnalysis.analysis,
+            health_score: reAnalysis.healthScore,
+          }).eq("barcode", barcode);
+        } catch {}
+      }
 
       if (redis) {
         try { await redis.set(`scan:${barcode}`, result, { ex: 86400 }); } catch {}
