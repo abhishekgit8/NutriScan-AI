@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
 import { Camera, X, Loader2 } from "lucide-react";
 
 interface Props {
@@ -12,42 +11,56 @@ interface Props {
 export default function BarcodeScanner({ onScan, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<unknown>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const scanner = new Html5Qrcode("barcode-scanner-viewport");
-    scannerRef.current = scanner;
+    let cancelled = false;
 
-    scanner
-      .start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 150 },
-          aspectRatio: 1.5,
-        },
-        (decodedText) => {
-          Promise.resolve(scanner.stop()).catch(() => {});
-          onScan(decodedText);
-        },
-        () => {}
-      )
-      .then(() => setLoading(false))
-      .catch((err) => {
-        console.error("Camera error:", err);
-        setError(
-          "Camera access denied or unavailable. Try entering the barcode manually."
+    async function init() {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (cancelled) return;
+
+        const scanner = new Html5Qrcode("barcode-scanner-viewport");
+        scannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.5,
+          },
+          (decodedText: string) => {
+            Promise.resolve(scanner.stop()).catch(() => {});
+            onScan(decodedText);
+          },
+          () => {}
         );
-        setLoading(false);
-      });
+
+        if (!cancelled) setLoading(false);
+      } catch (err) {
+        console.error("Camera error:", err);
+        if (!cancelled) {
+          setError(
+            "Camera access denied or unavailable. Try entering the barcode manually."
+          );
+          setLoading(false);
+        }
+      }
+    }
+
+    init();
 
     return () => {
-      if (scannerRef.current) {
-        Promise.resolve(scannerRef.current.stop()).catch(() => {});
-        Promise.resolve(scannerRef.current.clear()).catch(() => {});
+      cancelled = true;
+      const scanner = scannerRef.current as { stop?: () => Promise<void>; clear?: () => Promise<void> } | null;
+      if (scanner) {
+        Promise.resolve(scanner.stop?.()).catch(() => {});
+        Promise.resolve(scanner.clear?.()).catch(() => {});
       }
     };
   }, [onScan]);
@@ -58,7 +71,8 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
         <h2 className="text-sm font-medium text-white">Scan Barcode</h2>
         <button
           onClick={() => {
-            Promise.resolve(scannerRef.current?.stop()).catch(() => {});
+            const scanner = scannerRef.current as { stop?: () => Promise<void> } | null;
+            Promise.resolve(scanner?.stop?.()).catch(() => {});
             onClose();
           }}
           className="rounded-full p-2 text-white/80 hover:bg-white/10"
