@@ -293,7 +293,17 @@ export async function GET(request: NextRequest) {
     try {
       redis = getRedis();
       const cached = await redis.get(`scan:${barcode}`);
-      if (cached) return NextResponse.json(cached);
+      if (cached) {
+        // If cached result has stale/error analysis, skip cache and re-analyze
+        const cachedAnalysis = (cached as Record<string, unknown>).analysis as string | undefined;
+        const hasValidAnalysis = cachedAnalysis &&
+          !cachedAnalysis.includes("Unable to generate") &&
+          !cachedAnalysis.includes("try again") &&
+          cachedAnalysis.length > 20;
+        if (hasValidAnalysis) return NextResponse.json(cached);
+        // Delete stale cache
+        try { await redis.del(`scan:${barcode}`); } catch {}
+      }
     } catch (e) {
       console.warn("Redis unavailable:", e);
     }
@@ -307,50 +317,72 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (dbProduct) {
+      const hasValidAnalysis = dbProduct.analysis &&
+        !dbProduct.analysis.includes("Unable to generate") &&
+        !dbProduct.analysis.includes("try again") &&
+        dbProduct.analysis.length > 20;
+
+      if (hasValidAnalysis) {
+        const result = {
+          barcode: dbProduct.barcode,
+          productName: dbProduct.product_name,
+          ingredientsText: dbProduct.ingredients_text || "",
+          ingredients: dbProduct.ingredients_text
+            ? dbProduct.ingredients_text.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : [],
+          healthScore: dbProduct.health_score,
+          analysis: dbProduct.analysis || "",
+          pros: [] as string[],
+          cons: [] as string[],
+          summaryPoints: [] as string[],
+          alertMessage: undefined as string | undefined,
+          brand: undefined as string | undefined,
+        };
+        if (redis) {
+          try { await redis.set(`scan:${barcode}`, result, { ex: 86400 }); } catch {}
+        }
+        return NextResponse.json(result);
+      }
+
+      // Stale analysis — re-analyze from ingredients
+      const productName = dbProduct.product_name;
+      const ingredientsText = dbProduct.ingredients_text || "";
+      console.log(`Re-analyzing stale cached product: ${productName}`);
+
+      let reAnalysis;
+      try {
+        reAnalysis = await analyzeWithAI(productName, ingredientsText);
+      } catch {
+        try {
+          reAnalysis = await analyzeWithGemini(productName, ingredientsText);
+        } catch {
+          reAnalysis = analyzeIngredients(ingredientsText);
+        }
+      }
+
       const result = {
-        barcode: dbProduct.barcode,
-        productName: dbProduct.product_name,
-        ingredientsText: dbProduct.ingredients_text || "",
-        ingredients: dbProduct.ingredients_text
-          ? dbProduct.ingredients_text.split(",").map((s: string) => s.trim()).filter(Boolean)
+        barcode,
+        productName,
+        ingredientsText,
+        ingredients: ingredientsText
+          ? ingredientsText.split(",").map((s: string) => s.trim()).filter(Boolean)
           : [],
-        healthScore: dbProduct.health_score,
-        analysis: dbProduct.analysis || "",
-        pros: [] as string[],
-        cons: [] as string[],
-        summaryPoints: [] as string[],
-        alertMessage: undefined as string | undefined,
-        brand: undefined as string | undefined,
+        healthScore: reAnalysis.healthScore,
+        analysis: reAnalysis.analysis,
+        pros: reAnalysis.pros || [],
+        cons: reAnalysis.cons || [],
+        summaryPoints: reAnalysis.summaryPoints || [],
+        alertMessage: reAnalysis.alertMessage,
+        brand: dbProduct.product_name,
       };
 
-      // Re-analyze if cached product has empty analysis
-      if (!result.analysis && result.ingredientsText) {
-        console.log(`Re-analyzing cached product: ${result.productName}`);
-        let reAnalysis;
-        try {
-          reAnalysis = await analyzeWithAI(result.productName, result.ingredientsText);
-        } catch {
-          try {
-            reAnalysis = await analyzeWithGemini(result.productName, result.ingredientsText);
-          } catch {
-            reAnalysis = analyzeIngredients(result.ingredientsText);
-          }
-        }
-        result.healthScore = reAnalysis.healthScore;
-        result.analysis = reAnalysis.analysis;
-        result.pros = reAnalysis.pros || [];
-        result.cons = reAnalysis.cons || [];
-        result.summaryPoints = reAnalysis.summaryPoints || [];
-        result.alertMessage = reAnalysis.alertMessage;
-
-        // Update cache with fresh analysis
-        try {
-          await supabase.from("cached_products").update({
-            analysis: reAnalysis.analysis,
-            health_score: reAnalysis.healthScore,
-          }).eq("barcode", barcode);
-        } catch {}
-      }
+      // Update Supabase
+      try {
+        await supabase.from("cached_products").update({
+          analysis: reAnalysis.analysis,
+          health_score: reAnalysis.healthScore,
+        }).eq("barcode", barcode);
+      } catch {}
 
       if (redis) {
         try { await redis.set(`scan:${barcode}`, result, { ex: 86400 }); } catch {}
@@ -387,13 +419,16 @@ export async function GET(request: NextRequest) {
     let aiResult;
     try {
       aiResult = await analyzeWithAI(productName, ingredientsText);
+      console.log(`NaraRouter analysis OK for ${barcode}: score=${aiResult.healthScore}`);
     } catch (naraErr) {
       console.warn("NaraRouter failed:", naraErr);
       try {
         aiResult = await analyzeWithGemini(productName, ingredientsText);
+        console.log(`Gemini analysis OK for ${barcode}: score=${aiResult.healthScore}`);
       } catch (geminiErr) {
         console.warn("Gemini failed, using local analysis:", geminiErr);
         aiResult = analyzeIngredients(ingredientsText);
+        console.log(`Local analysis for ${barcode}: score=${aiResult.healthScore}, pros=${aiResult.pros.length}, cons=${aiResult.cons.length}`);
       }
     }
 
