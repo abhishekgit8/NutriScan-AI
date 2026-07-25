@@ -83,9 +83,9 @@ export default function ScanPageClient() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="mx-auto max-w-lg px-4 py-8 md:py-12">
-        <div className="mb-8 flex flex-col items-center gap-5">
-          <h1 className="text-2xl font-bold md:text-3xl">Scan a Product</h1>
+      <main className="mx-auto max-w-lg px-4 py-6 md:py-10">
+        <div className="mb-6 flex flex-col items-center gap-4">
+          <h1 className="text-xl font-bold md:text-2xl">Scan a Product</h1>
           <BarcodeInput />
         </div>
 
@@ -94,11 +94,9 @@ export default function ScanPageClient() {
         {error && (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950/30">
             <AlertCircle className="h-10 w-10 text-red-400" />
-            <div>
-              <p className="font-medium text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            </div>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              {error}
+            </p>
             <button
               onClick={refetch}
               className="flex items-center gap-1.5 rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600"
@@ -120,15 +118,15 @@ export default function ScanPageClient() {
         {!loading && !error && !result && barcode && (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center">
             <p className="text-sm text-[var(--text-secondary)]">
-              No data found for &quot;{barcode}&quot;. Try another barcode.
+              No data found for &quot;{barcode}&quot;.
             </p>
           </div>
         )}
 
         {!barcode && !loading && (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-8 text-center">
             <p className="text-sm text-[var(--text-secondary)]">
-              Enter a barcode above to get started.
+              Scan a barcode or enter one above.
             </p>
           </div>
         )}
