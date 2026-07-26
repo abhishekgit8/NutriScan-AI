@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NutriScan AI
+
+Scan any food product barcode and get instant AI-powered health analysis, ingredient breakdown, pros & cons, and personalized insights.
+
+**Live:** [nutriscan.rooted.sbs](https://nutriscan.rooted.sbs)
+
+## What It Does
+
+- **Barcode Scanning** — Scan barcodes using your phone camera (native `BarcodeDetector` API) or enter manually
+- **Health Scoring** — Products rated 1-100 with color-coded score rings
+- **AI Analysis** — Detailed health summary powered by NaraRouter (GLM-5.2) with Gemini fallback
+- **Pros & Cons** — Clear breakdown of what's good and bad about a product
+- **Ingredient Breakdown** — Full ingredient list with alerts for harmful additives
+- **Product Caching** — Scanned products cached for instant re-loading
+- **Save & Share** — Save scans to your profile and share via Web Share API
+- **Dark Mode** — Full dark/light theme support
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | Next.js 16, React 19, TypeScript | App framework and UI |
+| **Styling** | Tailwind CSS v4 | Utility-first styling, dark mode |
+| **Auth** | Clerk | Google + email/password login, guest mode |
+| **Database** | Supabase (PostgreSQL) | User profiles, scan history, product cache |
+| **Cache** | Upstash Redis | API response caching (24hr TTL) |
+| **AI Primary** | NaraRouter (GLM-5.2-alibaba) | Health analysis generation |
+| **AI Fallback** | Google Gemini 2.0 Flash | Backup AI when NaraRouter is unavailable |
+| **Local Fallback** | Custom rules engine | Ingredient keyword analysis when both AIs are down |
+| **Product Data** | Open Food Facts API | Barcode → product info (name, ingredients, brand) |
+| **Analytics** | PostHog | Usage tracking (opted out by default) |
+| **Webhooks** | Svix | Clerk webhook signature verification |
+| **Deployment** | Vercel | Hosting, serverless functions, CI/CD |
+| **Camera** | BarcodeDetector API | Native browser barcode scanning (no library) |
+| **Icons** | Lucide React | UI icons |
+| **Domain** | Hostinger DNS | Custom domain `nutriscan.rooted.sbs` |
+
+## Architecture
+
+```
+Scan Request
+  → Redis cache check (instant)
+  → Supabase cache check
+  → Open Food Facts API (barcode lookup)
+  → AI Analysis: NaraRouter → Gemini → Local Engine (3-tier fallback)
+  → Cache result in Redis + Supabase
+  → Return to client
+```
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+git clone https://github.com/abhishekgit8/NutriScan-AI.git
+cd NutriScan-AI
+npm install
+cp .env.example .env.local  # add your API keys
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_WEBHOOK_SECRET=
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+NARA_API_KEY=
+NEXT_PUBLIC_GEMINI_API_KEY=
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_HOST=
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## License
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
