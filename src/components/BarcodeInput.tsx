@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Camera } from "lucide-react";
+import { Search, Camera, Type, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const BarcodeScanner = dynamic(() => import("./BarcodeScanner"), {
@@ -10,17 +10,38 @@ const BarcodeScanner = dynamic(() => import("./BarcodeScanner"), {
   loading: () => null,
 });
 
+type InputMode = "barcode" | "manual" | "text";
+
 export default function BarcodeInput() {
+  const [mode, setMode] = useState<InputMode>("barcode");
   const [barcode, setBarcode] = useState("");
+  const [manualCode, setManualCode] = useState("");
+  const [ingredientText, setIngredientText] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = barcode.replace(/[^0-9]/g, "");
     if (cleaned.length >= 8) {
       router.push(`/scan?barcode=${cleaned}`);
+    }
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = manualCode.replace(/[^0-9]/g, "");
+    if (cleaned.length >= 8) {
+      router.push(`/scan?barcode=${cleaned}`);
+    }
+  };
+
+  const handleTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (ingredientText.trim().length > 3) {
+      const encoded = encodeURIComponent(ingredientText.trim());
+      router.push(`/scan?ingredients=${encoded}`);
     }
   };
 
@@ -35,52 +56,129 @@ export default function BarcodeInput() {
     }
   };
 
+  const tabs = [
+    { id: "barcode" as InputMode, label: "Scan", icon: Camera },
+    { id: "manual" as InputMode, label: "Enter Code", icon: Type },
+    { id: "text" as InputMode, label: "Paste Ingredients", icon: FileText },
+  ];
+
   return (
     <>
       {scanError && (
         <div className="mb-3 w-full max-w-lg rounded-lg bg-red-50 p-3 text-center text-xs text-red-600 dark:bg-red-950/30 dark:text-red-400">
           {scanError}
-          <button onClick={() => setScanError(null)} className="ml-2 underline">dismiss</button>
+          <button onClick={() => setScanError(null)} className="ml-2 underline">
+            dismiss
+          </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="w-full max-w-lg">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={barcode}
-              onChange={(e) => {
-                setBarcode(e.target.value.replace(/[^0-9]/g, ""));
+      <div className="w-full max-w-lg">
+        {/* Tab bar */}
+        <div className="mb-3 flex rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-900">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setMode(tab.id);
                 setScanError(null);
               }}
-              placeholder="Enter barcode number"
-              className="w-full rounded-full border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-white dark:placeholder:text-gray-500"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setScanError(null);
-              setShowScanner(true);
-            }}
-            className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-gray-300 dark:hover:bg-gray-800"
-          >
-            <Camera className="h-4 w-4" />
-            <span className="hidden sm:inline">Scan</span>
-          </button>
-          <button
-            type="submit"
-            className="rounded-full bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-40"
-            disabled={!barcode.trim()}
-          >
-            Go
-          </button>
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${
+                mode === tab.id
+                  ? "bg-white text-green-700 shadow-sm dark:bg-gray-800 dark:text-green-400"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              }`}
+            >
+              <tab.icon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
         </div>
-      </form>
+
+        {/* Barcode scan mode */}
+        {mode === "barcode" && (
+          <form onSubmit={handleBarcodeSubmit} className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={barcode}
+                onChange={(e) => {
+                  setBarcode(e.target.value.replace(/[^0-9]/g, ""));
+                  setScanError(null);
+                }}
+                placeholder="Enter barcode number"
+                className="w-full rounded-full border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-white dark:placeholder:text-gray-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setScanError(null);
+                setShowScanner(true);
+              }}
+              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <Camera className="h-4 w-4" />
+              <span className="hidden sm:inline">Scan</span>
+            </button>
+            <button
+              type="submit"
+              className="rounded-full bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-40"
+              disabled={!barcode.trim()}
+            >
+              Go
+            </button>
+          </form>
+        )}
+
+        {/* Manual code entry */}
+        {mode === "manual" && (
+          <form onSubmit={handleManualSubmit} className="flex gap-2">
+            <div className="relative flex-1">
+              <Type className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="Type barcode digits"
+                className="w-full rounded-full border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-white dark:placeholder:text-gray-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-full bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-40"
+              disabled={!manualCode.trim()}
+            >
+              Analyze
+            </button>
+          </form>
+        )}
+
+        {/* Raw ingredient text */}
+        {mode === "text" && (
+          <form onSubmit={handleTextSubmit} className="space-y-2">
+            <textarea
+              value={ingredientText}
+              onChange={(e) => setIngredientText(e.target.value)}
+              placeholder="Paste ingredient list here... e.g. Sugar, Palm Oil, Salt, Maltodextrin, Artificial Flavours"
+              rows={3}
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-white dark:placeholder:text-gray-500"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-full bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-40"
+              disabled={ingredientText.trim().length < 4}
+            >
+              Analyze Ingredients
+            </button>
+          </form>
+        )}
+      </div>
 
       {showScanner && (
         <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />

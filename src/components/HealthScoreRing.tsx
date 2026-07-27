@@ -1,5 +1,6 @@
 "use client";
 
+// Kept for backward compatibility — now uses RiskBadge internally
 import { getHealthScoreColor, getHealthScoreLabel } from "@/lib/utils";
 
 interface Props {

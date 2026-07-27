@@ -1,10 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 import { getRedis } from "@/lib/redis";
+import { RiskTier, HealthTag, FlaggedIngredient } from "@/types";
+import { getRiskTierFromScore } from "@/lib/utils";
 
 const OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/api/v2/product";
 
-// --- Local Health Analysis Engine (no API needed) ---
+// --- Health Tag to Ingredient Conflict Map ---
+
+const TAG_CONFLICTS: Record<HealthTag, { keywords: string[]; reason: string }[]> = {
+  pre_diabetes: [
+    { keywords: ["sugar", "sucre", "high fructose corn syrup", "glucose-fructose", "dextrose", "maltodextrin"], reason: "Contains sugar or high-GI sweeteners" },
+    { keywords: ["white flour", "refined flour", "enriched flour"], reason: "Refined flour spikes blood sugar" },
+  ],
+  pcos: [
+    { keywords: ["sugar", "sucre", "high fructose corn syrup"], reason: "High sugar can worsen PCOS symptoms" },
+    { keywords: ["soy"], reason: "Soy may affect hormone balance in PCOS" },
+  ],
+  high_blood_pressure: [
+    { keywords: ["sodium", "salt", "nacl", "monosodium"], reason: "High sodium content" },
+    { keywords: ["msg", "monosodium glutamate"], reason: "MSG contributes to sodium intake" },
+  ],
+  keto: [
+    { keywords: ["sugar", "sucre", "high fructose corn syrup", "glucose-fructose", "dextrose", "maltodextrin"], reason: "Contains sugar — not keto-friendly" },
+    { keywords: ["wheat", "flour", "corn starch", "potato starch"], reason: "Contains high-carb ingredients" },
+    { keywords: ["palm oil"], reason: "Palm oil is high in saturated fat" },
+  ],
+  vegan: [
+    { keywords: ["milk", "lait", "whey", "casein", "lactose"], reason: "Contains dairy derivatives" },
+    { keywords: ["egg", "oeuf", "albumin", "globulin"], reason: "Contains egg derivatives" },
+    { keywords: ["honey", "miel"], reason: "Honey is not vegan" },
+    { keywords: ["gelatin", "gélatine"], reason: "Contains gelatin (animal-derived)" },
+  ],
+  eczema: [
+    { keywords: ["artificial colour", "artificial color", "food dye", "tartrazine", "allura red"], reason: "Artificial colours can trigger eczema flare-ups" },
+    { keywords: ["gluten", "wheat"], reason: "Gluten may trigger skin inflammation" },
+    { keywords: ["soy"], reason: "Soy can trigger inflammatory responses" },
+  ],
+  acne_prone: [
+    { keywords: ["whey", "milk", "lait"], reason: "Dairy/whey is linked to acne breakouts" },
+    { keywords: ["sugar", "sucre", "high fructose corn syrup"], reason: "High sugar triggers acne-causing hormones" },
+    { keywords: ["soy"], reason: "Soy can affect hormonal balance" },
+  ],
+  sulfate_free: [
+    { keywords: ["sodium lauryl sulfate", "sodium laureth sulfate", "sls", "sles", "sulfate"], reason: "Contains sulfates — harsh surfactants" },
+  ],
+  paraben_free: [
+    { keywords: ["paraben", "methylparaben", "propylparaben", "butylparaben"], reason: "Contains parabens — preservative with health concerns" },
+  ],
+  gluten_free: [
+    { keywords: ["wheat", "barley", "rye", "malt", "gluten", "semolina", "spelt", "kamut"], reason: "Contains gluten-containing grains" },
+  ],
+  lactose_free: [
+    { keywords: ["milk", "lait", "whey", "casein", "lactose", "cream", "butter", "cheese"], reason: "Contains lactose or dairy derivatives" },
+  ],
+  peanut_free: [
+    { keywords: ["peanut", "arachide", "groundnut"], reason: "Contains peanuts" },
+  ],
+  soy_free: [
+    { keywords: ["soy", "soja", "soybean", "lecithin (soy)"], reason: "Contains soy derivatives" },
+  ],
+  shellfish_free: [
+    { keywords: ["shrimp", "crab", "lobster", "crayfish", "prawn"], reason: "Contains shellfish derivatives" },
+  ],
+  sensitive_dog: [
+    { keywords: ["artificial preservative", "bha", "bht", "ethoxyquin"], reason: "Artificial preservatives can upset sensitive dogs" },
+    { keywords: ["corn syrup", "high fructose corn syrup"], reason: "Corn syrup is a filler with low nutritional value" },
+  ],
+  cat_toxic_avoid: [
+    { keywords: ["onion", "garlic", "chives", "leek"], reason: "Onion/garlic family is toxic to cats" },
+    { keywords: ["chocolate", "cocoa", "theobromine"], reason: "Chocolate is toxic to cats" },
+    { keywords: ["grape", "raisin"], reason: "Grapes are toxic to cats" },
+    { keywords: ["xylitol"], reason: "Xylitol is toxic to cats" },
+  ],
+};
+
+// --- Local Health Analysis Engine ---
 
 const POSITIVE_KEYWORDS: Record<string, string> = {
   "whole grain": "Contains whole grains for better digestion",
@@ -49,22 +120,28 @@ const NEGATIVE_KEYWORDS: Record<string, { reason: string; severity: number }> = 
   "phosphoric acid": { reason: "Contains phosphoric acid — can affect bone health", severity: 1 },
 };
 
-function analyzeIngredients(ingredientsText: string): {
+function analyzeIngredients(
+  ingredientsText: string,
+  activeTags: HealthTag[] = []
+): {
   healthScore: number;
+  riskTier: RiskTier;
   analysis: string;
   summaryPoints: string[];
   alertMessage: string | undefined;
   pros: string[];
   cons: string[];
+  flaggedIngredients: FlaggedIngredient[];
 } {
   const text = ingredientsText.toLowerCase();
   const ingredients = ingredientsText.split(",").map((s) => s.trim()).filter(Boolean);
 
-  let score = 60; // start neutral
+  let score = 60;
   const pros: string[] = [];
   const cons: string[] = [];
   let alertMessage: string | undefined;
   const alertIssues: string[] = [];
+  const flaggedIngredients: FlaggedIngredient[] = [];
 
   // Check positive keywords
   for (const [keyword, reason] of Object.entries(POSITIVE_KEYWORDS)) {
@@ -112,8 +189,41 @@ function analyzeIngredients(ingredientsText: string): {
     cons.push(`Contains ${additives.length} food additives (${additives.slice(0, 5).join(", ")})`);
   }
 
+  // Health tag conflict analysis
+  if (activeTags.length > 0) {
+    for (const tag of activeTags) {
+      const conflicts = TAG_CONFLICTS[tag] || [];
+      for (const conflict of conflicts) {
+        for (const keyword of conflict.keywords) {
+          if (text.includes(keyword)) {
+            score -= 15;
+            flaggedIngredients.push({
+              name: keyword,
+              reason: conflict.reason,
+              severity: "high",
+            });
+            cons.push(`[${tag.toUpperCase()}] ${conflict.reason}`);
+            alertIssues.push(conflict.reason);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Deduplicate flagged ingredients
+  const seenFlags = new Set<string>();
+  const uniqueFlags = flaggedIngredients.filter((f) => {
+    if (seenFlags.has(f.name)) return false;
+    seenFlags.add(f.name);
+    return true;
+  });
+
   // Clamp score
   score = Math.min(100, Math.max(5, score));
+
+  // Determine risk tier
+  const riskTier = getRiskTierFromScore(score, uniqueFlags.length);
 
   // Build analysis text
   let analysis = "";
@@ -127,21 +237,28 @@ function analyzeIngredients(ingredientsText: string): {
     analysis = `This product has poor nutritional quality (${score}/100). ${cons[0] || "It is highly processed with concerning ingredients."} Consider healthier alternatives.`;
   }
 
+  if (activeTags.length > 0 && uniqueFlags.length > 0) {
+    analysis += ` Based on your health profile (${activeTags.length} active filter${activeTags.length > 1 ? "s" : ""}), ${uniqueFlags.length} ingredient${uniqueFlags.length > 1 ? "s were" : " was"} flagged.`;
+  }
+
   // Build summary points
   const summaryPoints: string[] = [];
-  summaryPoints.push(`Health Score: ${score}/100 — ${score >= 70 ? "Good" : score >= 50 ? "Moderate" : score >= 30 ? "Below Average" : "Poor"}`);
+  summaryPoints.push(`Health Score: ${score}/100 — ${riskTier === "safe" ? "Safe" : riskTier === "caution" ? "Caution" : "High Risk"}`);
   if (ingredients.length > 0) {
     summaryPoints.push(`Contains ${ingredients.length} ingredient${ingredients.length > 1 ? "s" : ""}`);
   }
   if (pros.length > 0) summaryPoints.push(`Pros: ${pros.slice(0, 2).join("; ")}`);
   if (cons.length > 0) summaryPoints.push(`Cons: ${cons.slice(0, 2).join("; ")}`);
+  if (uniqueFlags.length > 0) {
+    summaryPoints.push(`Flagged: ${uniqueFlags.map((f) => f.name).join(", ")}`);
+  }
 
   // Alert
   if (alertIssues.length > 0) {
-    alertMessage = `Warning: ${alertIssues.join(". ")}`;
+    alertMessage = `Warning: ${alertIssues.slice(0, 3).join(". ")}`;
   }
 
-  return { healthScore: score, analysis, summaryPoints, alertMessage, pros, cons };
+  return { healthScore: score, riskTier, analysis, summaryPoints, alertMessage, pros, cons, flaggedIngredients: uniqueFlags };
 }
 
 // --- API Route ---
@@ -152,23 +269,29 @@ async function fetchFromOpenFoodFacts(barcode: string) {
   return res.json();
 }
 
-async function analyzeWithAI(productName: string, ingredientsText: string) {
+async function analyzeWithAI(productName: string, ingredientsText: string, activeTags: HealthTag[]) {
   const apiKey = process.env.NARA_API_KEY;
   if (!apiKey) throw new Error("NARA_API_KEY not configured");
+
+  const tagContext = activeTags.length > 0
+    ? `\nUser Health Profile: ${activeTags.join(", ")}\nFlag ingredients that conflict with these health conditions.`
+    : "";
 
   const prompt = `You are a nutrition expert. Analyze this food product and return ONLY a JSON object (no markdown, no code blocks):
 
 {
   "healthScore": <number 1-100>,
+  "riskTier": "<safe|caution|high_risk>",
   "analysis": "<2-3 sentences about the product's healthiness>",
   "pros": ["<pro 1>", "<pro 2>", "<pro 3>"],
   "cons": ["<con 1>", "<con 2>", "<con 3>"],
   "summaryPoints": ["<point 1>", "<point 2>", "<point 3>"],
+  "flaggedIngredients": [{"name": "<ingredient>", "reason": "<why>", "severity": "<low|medium|high>"}],
   "alertMessage": "<health warning string or null>"
 }
 
 Product: ${productName}
-Ingredients: ${ingredientsText || "Not available"}`;
+Ingredients: ${ingredientsText || "Not available"}${tagContext}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -203,10 +326,18 @@ Ingredients: ${ingredientsText || "Not available"}`;
     const parsed = JSON.parse(jsonStr);
     return {
       healthScore: Math.min(100, Math.max(1, Number(parsed.healthScore) || 50)),
+      riskTier: (["safe", "caution", "high_risk"].includes(parsed.riskTier) ? parsed.riskTier : "caution") as RiskTier,
       analysis: String(parsed.analysis || ""),
       pros: Array.isArray(parsed.pros) ? parsed.pros.map(String) : [],
       cons: Array.isArray(parsed.cons) ? parsed.cons.map(String) : [],
       summaryPoints: Array.isArray(parsed.summaryPoints) ? parsed.summaryPoints.map(String) : [],
+      flaggedIngredients: Array.isArray(parsed.flaggedIngredients)
+        ? parsed.flaggedIngredients.map((f: Record<string, string>) => ({
+            name: String(f.name || ""),
+            reason: String(f.reason || ""),
+            severity: (["low", "medium", "high"].includes(f.severity) ? f.severity : "low") as "low" | "medium" | "high",
+          }))
+        : [],
       alertMessage: parsed.alertMessage ? String(parsed.alertMessage) : undefined,
     };
   } catch (err) {
@@ -215,23 +346,29 @@ Ingredients: ${ingredientsText || "Not available"}`;
   }
 }
 
-async function analyzeWithGemini(productName: string, ingredientsText: string) {
+async function analyzeWithGemini(productName: string, ingredientsText: string, activeTags: HealthTag[]) {
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+  const tagContext = activeTags.length > 0
+    ? `\nUser Health Profile: ${activeTags.join(", ")}\nFlag ingredients that conflict with these health conditions.`
+    : "";
 
   const prompt = `You are a nutrition expert. Analyze this food product and return ONLY a JSON object (no markdown, no code blocks):
 
 {
   "healthScore": <number 1-100>,
+  "riskTier": "<safe|caution|high_risk>",
   "analysis": "<2-3 sentences about the product's healthiness>",
   "pros": ["<pro 1>", "<pro 2>", "<pro 3>"],
   "cons": ["<con 1>", "<con 2>", "<con 3>"],
   "summaryPoints": ["<point 1>", "<point 2>", "<point 3>"],
+  "flaggedIngredients": [{"name": "<ingredient>", "reason": "<why>", "severity": "<low|medium|high>"}],
   "alertMessage": "<health warning string or null>"
 }
 
 Product: ${productName}
-Ingredients: ${ingredientsText || "Not available"}`;
+Ingredients: ${ingredientsText || "Not available"}${tagContext}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -265,10 +402,18 @@ Ingredients: ${ingredientsText || "Not available"}`;
     const parsed = JSON.parse(jsonStr);
     return {
       healthScore: Math.min(100, Math.max(1, Number(parsed.healthScore) || 50)),
+      riskTier: (["safe", "caution", "high_risk"].includes(parsed.riskTier) ? parsed.riskTier : "caution") as RiskTier,
       analysis: String(parsed.analysis || ""),
       pros: Array.isArray(parsed.pros) ? parsed.pros.map(String) : [],
       cons: Array.isArray(parsed.cons) ? parsed.cons.map(String) : [],
       summaryPoints: Array.isArray(parsed.summaryPoints) ? parsed.summaryPoints.map(String) : [],
+      flaggedIngredients: Array.isArray(parsed.flaggedIngredients)
+        ? parsed.flaggedIngredients.map((f: Record<string, string>) => ({
+            name: String(f.name || ""),
+            reason: String(f.reason || ""),
+            severity: (["low", "medium", "high"].includes(f.severity) ? f.severity : "low") as "low" | "medium" | "high",
+          }))
+        : [],
       alertMessage: parsed.alertMessage ? String(parsed.alertMessage) : undefined,
     };
   } catch (err) {
@@ -277,8 +422,38 @@ Ingredients: ${ingredientsText || "Not available"}`;
   }
 }
 
+function parseIngredients(raw: string): string[] {
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 export async function GET(request: NextRequest) {
   const barcode = request.nextUrl.searchParams.get("barcode");
+  const tagsParam = request.nextUrl.searchParams.get("tags");
+  const manualIngredients = request.nextUrl.searchParams.get("ingredients");
+
+  // Parse health tags from query
+  const activeTags: HealthTag[] = tagsParam
+    ? (tagsParam.split(",").filter(Boolean) as HealthTag[])
+    : [];
+
+  // Manual ingredient text mode (no barcode needed)
+  if (manualIngredients && manualIngredients.trim().length > 3) {
+    const aiResult = analyzeIngredients(manualIngredients, activeTags);
+    return NextResponse.json({
+      barcode: "manual",
+      productName: "Manual Entry",
+      ingredientsText: manualIngredients,
+      ingredients: parseIngredients(manualIngredients),
+      healthScore: aiResult.healthScore,
+      riskTier: aiResult.riskTier,
+      analysis: aiResult.analysis,
+      pros: aiResult.pros,
+      cons: aiResult.cons,
+      summaryPoints: aiResult.summaryPoints,
+      flaggedIngredients: aiResult.flaggedIngredients,
+      alertMessage: aiResult.alertMessage,
+    });
+  }
 
   if (!barcode || !/^\d{8,14}$/.test(barcode)) {
     return NextResponse.json(
@@ -292,17 +467,18 @@ export async function GET(request: NextRequest) {
     let redis = null;
     try {
       redis = getRedis();
-      const cached = await redis.get(`scan:${barcode}`);
+      const cacheKey = activeTags.length > 0
+        ? `scan:${barcode}:tags:${activeTags.sort().join(",")}`
+        : `scan:${barcode}`;
+      const cached = await redis.get(cacheKey);
       if (cached) {
-        // If cached result has stale/error analysis, skip cache and re-analyze
         const cachedAnalysis = (cached as Record<string, unknown>).analysis as string | undefined;
         const hasValidAnalysis = cachedAnalysis &&
           !cachedAnalysis.includes("Unable to generate") &&
           !cachedAnalysis.includes("try again") &&
           cachedAnalysis.length > 20;
         if (hasValidAnalysis) return NextResponse.json(cached);
-        // Delete stale cache
-        try { await redis.del(`scan:${barcode}`); } catch {}
+        try { await redis.del(cacheKey); } catch {}
       }
     } catch (e) {
       console.warn("Redis unavailable:", e);
@@ -322,19 +498,19 @@ export async function GET(request: NextRequest) {
         !dbProduct.analysis.includes("try again") &&
         dbProduct.analysis.length > 20;
 
-      if (hasValidAnalysis) {
+      if (hasValidAnalysis && activeTags.length === 0) {
         const result = {
           barcode: dbProduct.barcode,
           productName: dbProduct.product_name,
           ingredientsText: dbProduct.ingredients_text || "",
-          ingredients: dbProduct.ingredients_text
-            ? dbProduct.ingredients_text.split(",").map((s: string) => s.trim()).filter(Boolean)
-            : [],
+          ingredients: parseIngredients(dbProduct.ingredients_text || ""),
           healthScore: dbProduct.health_score,
+          riskTier: (dbProduct.riskTier || "caution") as RiskTier,
           analysis: dbProduct.analysis || "",
           pros: [] as string[],
           cons: [] as string[],
           summaryPoints: [] as string[],
+          flaggedIngredients: [] as FlaggedIngredient[],
           alertMessage: undefined as string | undefined,
           brand: undefined as string | undefined,
         };
@@ -344,19 +520,19 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(result);
       }
 
-      // Stale analysis — re-analyze from ingredients
+      // Re-analyze with health tags
       const productName = dbProduct.product_name;
       const ingredientsText = dbProduct.ingredients_text || "";
-      console.log(`Re-analyzing stale cached product: ${productName}`);
+      console.log(`Re-analyzing product with tags: ${productName} [${activeTags.join(",")}]`);
 
       let reAnalysis;
       try {
-        reAnalysis = await analyzeWithAI(productName, ingredientsText);
+        reAnalysis = await analyzeWithAI(productName, ingredientsText, activeTags);
       } catch {
         try {
-          reAnalysis = await analyzeWithGemini(productName, ingredientsText);
+          reAnalysis = await analyzeWithGemini(productName, ingredientsText, activeTags);
         } catch {
-          reAnalysis = analyzeIngredients(ingredientsText);
+          reAnalysis = analyzeIngredients(ingredientsText, activeTags);
         }
       }
 
@@ -364,28 +540,31 @@ export async function GET(request: NextRequest) {
         barcode,
         productName,
         ingredientsText,
-        ingredients: ingredientsText
-          ? ingredientsText.split(",").map((s: string) => s.trim()).filter(Boolean)
-          : [],
+        ingredients: parseIngredients(ingredientsText),
         healthScore: reAnalysis.healthScore,
+        riskTier: reAnalysis.riskTier,
         analysis: reAnalysis.analysis,
         pros: reAnalysis.pros || [],
         cons: reAnalysis.cons || [],
         summaryPoints: reAnalysis.summaryPoints || [],
+        flaggedIngredients: reAnalysis.flaggedIngredients || [],
         alertMessage: reAnalysis.alertMessage,
         brand: dbProduct.product_name,
       };
 
-      // Update Supabase
       try {
         await supabase.from("cached_products").update({
           analysis: reAnalysis.analysis,
           health_score: reAnalysis.healthScore,
+          risk_tier: reAnalysis.riskTier,
         }).eq("barcode", barcode);
       } catch {}
 
+      const cacheKey = activeTags.length > 0
+        ? `scan:${barcode}:tags:${activeTags.sort().join(",")}`
+        : `scan:${barcode}`;
       if (redis) {
-        try { await redis.set(`scan:${barcode}`, result, { ex: 86400 }); } catch {}
+        try { await redis.set(cacheKey, result, { ex: 86400 }); } catch {}
       }
 
       return NextResponse.json(result);
@@ -418,16 +597,16 @@ export async function GET(request: NextRequest) {
     // 4. Analysis: try AI, fallback to local engine
     let aiResult;
     try {
-      aiResult = await analyzeWithAI(productName, ingredientsText);
+      aiResult = await analyzeWithAI(productName, ingredientsText, activeTags);
       console.log(`NaraRouter analysis OK for ${barcode}: score=${aiResult.healthScore}`);
     } catch (naraErr) {
       console.warn("NaraRouter failed:", naraErr);
       try {
-        aiResult = await analyzeWithGemini(productName, ingredientsText);
+        aiResult = await analyzeWithGemini(productName, ingredientsText, activeTags);
         console.log(`Gemini analysis OK for ${barcode}: score=${aiResult.healthScore}`);
       } catch (geminiErr) {
         console.warn("Gemini failed, using local analysis:", geminiErr);
-        aiResult = analyzeIngredients(ingredientsText);
+        aiResult = analyzeIngredients(ingredientsText, activeTags);
         console.log(`Local analysis for ${barcode}: score=${aiResult.healthScore}, pros=${aiResult.pros.length}, cons=${aiResult.cons.length}`);
       }
     }
@@ -436,21 +615,24 @@ export async function GET(request: NextRequest) {
       barcode,
       productName,
       ingredientsText,
-      ingredients: ingredientsText
-        ? ingredientsText.split(",").map((s: string) => s.trim()).filter(Boolean)
-        : [],
+      ingredients: parseIngredients(ingredientsText),
       healthScore: aiResult.healthScore,
+      riskTier: aiResult.riskTier,
       analysis: aiResult.analysis,
       pros: aiResult.pros || [],
       cons: aiResult.cons || [],
       summaryPoints: aiResult.summaryPoints || [],
+      flaggedIngredients: aiResult.flaggedIngredients || [],
       alertMessage: aiResult.alertMessage,
       brand,
     };
 
     // 5. Cache
+    const cacheKey = activeTags.length > 0
+      ? `scan:${barcode}:tags:${activeTags.sort().join(",")}`
+      : `scan:${barcode}`;
     if (redis) {
-      try { await redis.set(`scan:${barcode}`, result, { ex: 86400 }); } catch {}
+      try { await redis.set(cacheKey, result, { ex: 86400 }); } catch {}
     }
     try {
       await supabase.from("cached_products").upsert(
@@ -460,6 +642,7 @@ export async function GET(request: NextRequest) {
           ingredients_text: ingredientsText,
           analysis: aiResult.analysis,
           health_score: aiResult.healthScore,
+          risk_tier: aiResult.riskTier,
         },
         { onConflict: "barcode" }
       );

@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       email,
       display_name: displayName,
       preferences: [],
+      health_tags: [],
     });
 
     if (error) {

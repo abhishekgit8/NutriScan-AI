@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 import BarcodeInput from "@/components/BarcodeInput";
-import { Leaf, Zap, Brain, Shield } from "lucide-react";
+import { Leaf, Zap, Brain, Shield, ShieldCheck } from "lucide-react";
 
 export default function Home() {
   return (
@@ -19,8 +19,8 @@ export default function Home() {
           </h1>
 
           <p className="mt-4 max-w-md text-sm text-[var(--text-secondary)] md:text-base">
-            Scan any product barcode or enter it manually. Get instant
-            AI-powered health analysis with ingredient breakdown.
+            Scan any product barcode or paste ingredients. Get instant
+            AI-powered health analysis personalized to your health profile.
           </p>
 
           <div className="mt-8 w-full max-w-lg">
@@ -62,13 +62,47 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 sm:col-span-2 md:col-span-1">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <h3 className="text-sm font-semibold">Risk Tiers</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+              Safe, Caution, or High Risk — clear at-a-glance ratings.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
               <Shield className="h-4 w-4" />
             </div>
-            <h3 className="text-sm font-semibold">Health Alerts</h3>
+            <h3 className="text-sm font-semibold">Health Profiles</h3>
             <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
-              Personalized alerts for your dietary needs.
+              Set your conditions — Pre-Diabetes, Allergens, PCOS & more.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold">Paste Ingredients</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+              No barcode? Paste raw ingredient text for instant analysis.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold">Flagged Ingredients</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+              Problem ingredients highlighted with explanations.
             </p>
           </div>
         </section>

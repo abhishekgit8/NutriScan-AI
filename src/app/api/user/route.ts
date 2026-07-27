@@ -11,23 +11,24 @@ export async function GET() {
 
   const supabase = getSupabaseServiceClient();
 
-  // Get or create user profile
   const { data: profile } = await supabase
     .from("user_profiles")
     .select("*")
     .eq("clerk_user_id", userId)
     .single();
 
-  // Get scan history
   const { data: history } = await supabase
     .from("scan_history")
     .select("*")
     .eq("clerk_user_id", userId)
     .order("scanned_at", { ascending: false })
-    .limit(50);
+    .limit(100);
 
   return NextResponse.json({
-    profile: profile || null,
+    profile: profile ? {
+      ...profile,
+      healthTags: profile.health_tags || [],
+    } : null,
     history: history || [],
   });
 }
@@ -45,19 +46,45 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseServiceClient();
 
   if (action === "save_scan") {
-    const { barcode, productName, healthScore } = body;
+    const { barcode, productName, healthScore, riskTier } = body;
 
     const { error } = await supabase.from("scan_history").insert({
       clerk_user_id: userId,
       barcode,
       product_name: productName,
       health_score: healthScore,
+      risk_tier: riskTier || "safe",
     });
 
     if (error) {
       console.error("Save scan error:", error);
       return NextResponse.json(
         { error: "Failed to save scan" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  }
+
+  if (action === "update_health_tags") {
+    const { healthTags } = body;
+
+    const { error } = await supabase.from("user_profiles").upsert(
+      {
+        clerk_user_id: userId,
+        email: body.email || "",
+        display_name: body.displayName || "",
+        health_tags: healthTags || [],
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "clerk_user_id" }
+    );
+
+    if (error) {
+      console.error("Update health tags error:", error);
+      return NextResponse.json(
+        { error: "Failed to update health tags" },
         { status: 500 }
       );
     }

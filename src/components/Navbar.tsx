@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTheme } from "./ThemeProvider";
 import { UserButton, useUser } from "@clerk/nextjs";
-import { Moon, Sun, Leaf, User } from "lucide-react";
+import { Moon, Sun, Leaf, User, LayoutDashboard } from "lucide-react";
 
 export default function Navbar() {
   const { theme, toggle } = useTheme();
@@ -26,6 +26,16 @@ export default function Navbar() {
           >
             Scan
           </Link>
+
+          {isSignedIn && (
+            <Link
+              href="/dashboard"
+              className="hidden items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-sm transition hover:bg-gray-50 dark:hover:bg-gray-800 sm:flex"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Dashboard
+            </Link>
+          )}
 
           <button
             onClick={toggle}

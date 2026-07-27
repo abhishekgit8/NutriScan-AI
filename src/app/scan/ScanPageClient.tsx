@@ -4,20 +4,21 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import BarcodeInput from "@/components/BarcodeInput";
+import HealthProfileBanner from "@/components/HealthProfileBanner";
 import ScanResults from "@/components/ScanResults";
 import SkeletonCard from "@/components/SkeletonCard";
 import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
-import { ScanResult } from "@/types";
+import { ScanResult, HealthTag } from "@/types";
 import { useUser } from "@clerk/nextjs";
 
-function useScanFetcher(barcode: string | null) {
+function useScanFetcher(barcode: string | null, ingredients: string | null) {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    if (!barcode) return;
+    if (!barcode && !ingredients) return;
 
     const controller = new AbortController();
 
@@ -25,10 +26,23 @@ function useScanFetcher(barcode: string | null) {
       setLoading(true);
       setError(null);
       setResult(null);
+
+      // Load active health tags from localStorage
+      let activeTags: HealthTag[] = [];
       try {
-        const res = await fetch(`/api/scan?barcode=${barcode}`, {
-          signal: controller.signal,
-        });
+        const stored = localStorage.getItem("healthTags");
+        if (stored) activeTags = JSON.parse(stored);
+      } catch {}
+
+      try {
+        let url: string;
+        if (ingredients) {
+          url = `/api/scan?ingredients=${encodeURIComponent(ingredients)}&tags=${activeTags.join(",")}`;
+        } else {
+          url = `/api/scan?barcode=${barcode}&tags=${activeTags.join(",")}`;
+        }
+
+        const res = await fetch(url, { signal: controller.signal });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to scan product");
         setResult(data);
@@ -42,7 +56,7 @@ function useScanFetcher(barcode: string | null) {
 
     run();
     return () => controller.abort();
-  }, [barcode, retryCount]);
+  }, [barcode, ingredients, retryCount]);
 
   const refetch = useCallback(() => {
     setRetryCount((c) => c + 1);
@@ -54,10 +68,11 @@ function useScanFetcher(barcode: string | null) {
 export default function ScanPageClient() {
   const searchParams = useSearchParams();
   const barcode = searchParams.get("barcode");
+  const ingredients = searchParams.get("ingredients");
   const router = useRouter();
   const { user } = useUser();
 
-  const { result, loading, error, refetch } = useScanFetcher(barcode);
+  const { result, loading, error, refetch } = useScanFetcher(barcode, ingredients);
   const [isSaved, setIsSaved] = useState(false);
 
   const handleSave = async () => {
@@ -71,6 +86,7 @@ export default function ScanPageClient() {
           barcode: result.barcode,
           productName: result.productName,
           healthScore: result.healthScore,
+          riskTier: result.riskTier,
         }),
       });
       setIsSaved(true);
@@ -84,8 +100,12 @@ export default function ScanPageClient() {
       <Navbar />
 
       <main className="mx-auto max-w-lg px-4 py-6 md:py-10">
-        <div className="mb-6 flex flex-col items-center gap-4">
+        <div className="mb-4 flex flex-col items-center gap-3">
           <h1 className="text-xl font-bold md:text-2xl">Scan a Product</h1>
+          <HealthProfileBanner />
+        </div>
+
+        <div className="mb-6">
           <BarcodeInput />
         </div>
 
@@ -132,10 +152,18 @@ export default function ScanPageClient() {
           </div>
         )}
 
-        {!barcode && !loading && (
+        {!loading && !error && !result && ingredients && (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)]">
+              Analyzing your ingredients...
+            </p>
+          </div>
+        )}
+
+        {!barcode && !ingredients && !loading && (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-8 text-center">
             <p className="text-sm text-[var(--text-secondary)]">
-              Scan a barcode or enter one above.
+              Scan a barcode, enter one manually, or paste ingredients above.
             </p>
           </div>
         )}
