@@ -58,7 +58,7 @@ export default function Home() {
             </div>
             <h3 className="text-sm font-semibold">AI-Powered</h3>
             <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
-              NaraRouter GLM-5.2 with Gemini fallback.
+              NaraRouter Agnes 2.5 Flash with Gemini fallback.
             </p>
           </div>
 

@@ -24,7 +24,7 @@ Scan any food product barcode and get instant AI-powered health analysis, ingred
 | **Auth** | Clerk | Google + email/password login, guest mode |
 | **Database** | Supabase (PostgreSQL) | User profiles, scan history, product cache |
 | **Cache** | Upstash Redis | API response caching (24hr TTL) |
-| **AI Primary** | NaraRouter (GLM-5.2-alibaba) | Health analysis generation |
+| **AI Primary** | NaraRouter (Agnes 2.5 Flash — free tier) | Health analysis generation |
 | **AI Fallback** | Google Gemini 2.0 Flash | Backup AI when NaraRouter is unavailable |
 | **Local Fallback** | Custom rules engine | Ingredient keyword analysis when both AIs are down |
 | **Product Data** | Open Food Facts API | Barcode → product info (name, ingredients, brand) |

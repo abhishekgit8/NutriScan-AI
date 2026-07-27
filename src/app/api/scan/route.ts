@@ -304,7 +304,7 @@ Ingredients: ${ingredientsText || "Not available"}${tagContext}`;
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "glm-5.2-alibaba",
+        model: "agnes-2.5-flash",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
       }),
