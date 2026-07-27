@@ -74,7 +74,15 @@ body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
-  max-w-xs rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs shadow-lg transition-all duration-150;
+  max-width: 20rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  transition: opacity 0.15s ease;
   pointer-events: none;
   white-space: normal;
 }
