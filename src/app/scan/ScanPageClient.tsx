@@ -7,7 +7,7 @@ import BarcodeInput from "@/components/BarcodeInput";
 import HealthProfileBanner from "@/components/HealthProfileBanner";
 import ScanResults from "@/components/ScanResults";
 import SkeletonCard from "@/components/SkeletonCard";
-import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowLeft, RefreshCw, SearchX, Camera, Type } from "lucide-react";
 import { ScanResult, HealthTag } from "@/types";
 import { useUser } from "@clerk/nextjs";
 
@@ -64,6 +64,94 @@ function useScanFetcher(barcode: string | null, ingredients: string | null) {
   return { result, loading, error, refetch };
 }
 
+function ProductNotFound({ barcode, onReset }: { barcode: string; onReset: () => void }) {
+  const router = useRouter();
+
+  return (
+    <div className="animate-fade-in rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+        <SearchX className="h-7 w-7 text-gray-400" />
+      </div>
+
+      <h2 className="text-lg font-bold">Product Not Found</h2>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">
+        Barcode <span className="font-mono font-medium">{barcode}</span> isn&apos;t in our database yet.
+      </p>
+
+      <div className="mt-6 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          Try one of these instead:
+        </p>
+
+        <div className="grid grid-cols-1 gap-2">
+          <button
+            onClick={() => {
+              onReset();
+              router.push("/scan");
+            }}
+            className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition hover:bg-[var(--bg-secondary)]"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
+              <Camera className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Photograph the Label</p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                AI will extract and analyze the ingredients
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              onReset();
+              // Switch to image tab with food mode will need parent state
+              // For now, redirect to scan page where user can use Image tab
+              router.push("/scan");
+            }}
+            className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition hover:bg-[var(--bg-secondary)]"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30">
+              <Camera className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Photograph the Food</p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                AI identifies the food and estimates nutrition
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              onReset();
+              router.push("/scan");
+            }}
+            className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition hover:bg-[var(--bg-secondary)]"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/30">
+              <Type className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Paste Ingredients</p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Copy the ingredient list from the product
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <button
+        onClick={onReset}
+        className="mt-4 text-xs text-[var(--text-secondary)] underline hover:text-[var(--text)]"
+      >
+        Scan a different barcode
+      </button>
+    </div>
+  );
+}
+
 export default function ScanPageClient() {
   const searchParams = useSearchParams();
   const barcode = searchParams.get("barcode");
@@ -73,17 +161,23 @@ export default function ScanPageClient() {
 
   const { result: urlResult, loading: urlLoading, error: urlError, refetch } = useScanFetcher(barcode, ingredients);
 
-  // Image scan state (results come via API callback, not URL)
+  // Image scan state
   const [imageResult, setImageResult] = useState<ScanResult | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
   const [isSaved, setIsSaved] = useState(false);
 
-  // Merge results: URL-based or image-based
+  // Merge results
   const result = urlResult || imageResult;
   const loading = urlLoading || imageLoading;
   const error = urlError || imageError;
+
+  // Detect "product not found" specifically
+  const isNotFound =
+    error?.toLowerCase().includes("product not found") ||
+    error?.toLowerCase().includes("not found in") ||
+    false;
 
   const handleSave = async () => {
     if (!result || !user) return;
@@ -107,6 +201,11 @@ export default function ScanPageClient() {
     setImageResult(null);
     setImageError(null);
     setImageLoading(false);
+  };
+
+  const resetAll = () => {
+    clearImageState();
+    router.push("/scan");
   };
 
   return (
@@ -146,7 +245,13 @@ export default function ScanPageClient() {
 
         {loading && <SkeletonCard />}
 
-        {error && (
+        {/* Product Not Found — friendly fallback */}
+        {isNotFound && barcode && (
+          <ProductNotFound barcode={barcode} onReset={clearImageState} />
+        )}
+
+        {/* Generic error */}
+        {error && !isNotFound && (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950/30">
             <AlertCircle className="h-10 w-10 text-red-400" />
             <p className="text-sm font-medium text-red-600 dark:text-red-400">
@@ -167,10 +272,7 @@ export default function ScanPageClient() {
                 Try Again
               </button>
               <button
-                onClick={() => {
-                  clearImageState();
-                  router.push("/scan");
-                }}
+                onClick={resetAll}
                 className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
