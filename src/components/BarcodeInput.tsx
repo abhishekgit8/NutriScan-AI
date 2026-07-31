@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Camera, Type, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -10,12 +10,23 @@ const BarcodeScanner = dynamic(() => import("./BarcodeScanner"), {
   loading: () => null,
 });
 
-type InputMode = "barcode" | "manual" | "text";
+const ImageScanner = dynamic(() => import("./ImageScanner"), {
+  ssr: false,
+  loading: () => null,
+});
 
-export default function BarcodeInput() {
+type InputMode = "barcode" | "image" | "text";
+
+interface Props {
+  onImageResult?: (data: unknown) => void;
+  onImageError?: (msg: string) => void;
+  onImageLoading?: (loading: boolean) => void;
+  tags?: string[];
+}
+
+export default function BarcodeInput({ onImageResult, onImageError, onImageLoading, tags = [] }: Props) {
   const [mode, setMode] = useState<InputMode>("barcode");
   const [barcode, setBarcode] = useState("");
-  const [manualCode, setManualCode] = useState("");
   const [ingredientText, setIngredientText] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -24,14 +35,6 @@ export default function BarcodeInput() {
   const handleBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = barcode.replace(/[^0-9]/g, "");
-    if (cleaned.length >= 8) {
-      router.push(`/scan?barcode=${cleaned}`);
-    }
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleaned = manualCode.replace(/[^0-9]/g, "");
     if (cleaned.length >= 8) {
       router.push(`/scan?barcode=${cleaned}`);
     }
@@ -56,10 +59,23 @@ export default function BarcodeInput() {
     }
   };
 
+  const handleImageResult = useCallback((data: unknown) => {
+    onImageResult?.(data);
+  }, [onImageResult]);
+
+  const handleImageError = useCallback((msg: string) => {
+    onImageError?.(msg);
+    setScanError(msg);
+  }, [onImageError]);
+
+  const handleImageLoading = useCallback((loading: boolean) => {
+    onImageLoading?.(loading);
+  }, [onImageLoading]);
+
   const tabs = [
-    { id: "barcode" as InputMode, label: "Scan", icon: Camera },
-    { id: "manual" as InputMode, label: "Enter Code", icon: Type },
-    { id: "text" as InputMode, label: "Paste Ingredients", icon: FileText },
+    { id: "barcode" as InputMode, label: "Barcode", icon: Camera },
+    { id: "image" as InputMode, label: "Image", icon: FileText },
+    { id: "text" as InputMode, label: "Text", icon: Type },
   ];
 
   return (
@@ -90,12 +106,12 @@ export default function BarcodeInput() {
               }`}
             >
               <tab.icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{tab.label}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Barcode scan mode */}
+        {/* Barcode mode */}
         {mode === "barcode" && (
           <form onSubmit={handleBarcodeSubmit} className="flex gap-2">
             <div className="relative flex-1">
@@ -134,32 +150,17 @@ export default function BarcodeInput() {
           </form>
         )}
 
-        {/* Manual code entry */}
-        {mode === "manual" && (
-          <form onSubmit={handleManualSubmit} className="flex gap-2">
-            <div className="relative flex-1">
-              <Type className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={manualCode}
-                onChange={(e) => setManualCode(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="Type barcode digits"
-                className="w-full rounded-full border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-[var(--bg-secondary)] dark:text-white dark:placeholder:text-gray-500"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-full bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-40"
-              disabled={!manualCode.trim()}
-            >
-              Analyze
-            </button>
-          </form>
+        {/* Image mode */}
+        {mode === "image" && (
+          <ImageScanner
+            onResult={handleImageResult}
+            onError={handleImageError}
+            onLoading={handleImageLoading}
+            tags={tags}
+          />
         )}
 
-        {/* Raw ingredient text */}
+        {/* Text mode */}
         {mode === "text" && (
           <form onSubmit={handleTextSubmit} className="space-y-2">
             <textarea

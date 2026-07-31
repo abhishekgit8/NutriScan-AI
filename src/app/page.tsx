@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 import BarcodeInput from "@/components/BarcodeInput";
-import { Leaf, Zap, Brain, Shield, ShieldCheck } from "lucide-react";
+import { Leaf, Zap, Brain, Shield, ShieldCheck, Camera, Image as ImageIcon, Type } from "lucide-react";
 
 export default function Home() {
   return (
@@ -19,7 +19,7 @@ export default function Home() {
           </h1>
 
           <p className="mt-4 max-w-md text-sm text-[var(--text-secondary)] md:text-base">
-            Scan any product barcode or paste ingredients. Get instant
+            Scan barcodes, photograph ingredient labels, or snap food items. Get instant
             AI-powered health analysis personalized to your health profile.
           </p>
 
@@ -44,11 +44,31 @@ export default function Home() {
         <section className="mt-20 grid gap-3 sm:grid-cols-2 md:mt-28 md:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
+              <Camera className="h-4 w-4" />
+            </div>
+            <h3 className="text-sm font-semibold">Barcode Scan</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+              Scan any product barcode with your camera for instant results.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
+              <ImageIcon className="h-4 w-4" />
+            </div>
+            <h3 className="text-sm font-semibold">Label Photo</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+              Photograph ingredient labels — AI extracts and analyzes text.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
               <Zap className="h-4 w-4" />
             </div>
-            <h3 className="text-sm font-semibold">Instant Analysis</h3>
+            <h3 className="text-sm font-semibold">Food Photo</h3>
             <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
-              Health scores and ingredient breakdowns in seconds.
+              Snap unlabeled food — AI identifies it and estimates nutrition.
             </p>
           </div>
 
@@ -84,9 +104,7 @@ export default function Home() {
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
             <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
+              <Type className="h-4 w-4" />
             </div>
             <h3 className="text-sm font-semibold">Paste Ingredients</h3>
             <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">

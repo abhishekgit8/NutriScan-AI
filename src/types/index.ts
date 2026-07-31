@@ -108,6 +108,8 @@ export interface OpenFoodFactsProduct {
   } | null;
 }
 
+export type ImageScanMode = "ingredients" | "food";
+
 export interface AIAnalysisResponse {
   healthScore: number;
   analysis: string;

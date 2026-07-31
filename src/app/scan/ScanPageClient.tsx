@@ -27,7 +27,6 @@ function useScanFetcher(barcode: string | null, ingredients: string | null) {
       setError(null);
       setResult(null);
 
-      // Load active health tags from localStorage
       let activeTags: HealthTag[] = [];
       try {
         const stored = localStorage.getItem("healthTags");
@@ -72,8 +71,19 @@ export default function ScanPageClient() {
   const router = useRouter();
   const { user } = useUser();
 
-  const { result, loading, error, refetch } = useScanFetcher(barcode, ingredients);
+  const { result: urlResult, loading: urlLoading, error: urlError, refetch } = useScanFetcher(barcode, ingredients);
+
+  // Image scan state (results come via API callback, not URL)
+  const [imageResult, setImageResult] = useState<ScanResult | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+
   const [isSaved, setIsSaved] = useState(false);
+
+  // Merge results: URL-based or image-based
+  const result = urlResult || imageResult;
+  const loading = urlLoading || imageLoading;
+  const error = urlError || imageError;
 
   const handleSave = async () => {
     if (!result || !user) return;
@@ -90,9 +100,13 @@ export default function ScanPageClient() {
         }),
       });
       setIsSaved(true);
-    } catch {
-      // silently fail
-    }
+    } catch {}
+  };
+
+  const clearImageState = () => {
+    setImageResult(null);
+    setImageError(null);
+    setImageLoading(false);
   };
 
   return (
@@ -106,7 +120,28 @@ export default function ScanPageClient() {
         </div>
 
         <div className="mb-6">
-          <BarcodeInput />
+          <BarcodeInput
+            onImageResult={(data) => {
+              clearImageState();
+              setImageResult(data as ScanResult);
+            }}
+            onImageError={(msg) => {
+              clearImageState();
+              setImageError(msg);
+            }}
+            onImageLoading={(isLoading) => {
+              setImageLoading(isLoading);
+              if (isLoading) setImageError(null);
+            }}
+            tags={(() => {
+              try {
+                const stored = localStorage.getItem("healthTags");
+                return stored ? JSON.parse(stored) : [];
+              } catch {
+                return [];
+              }
+            })()}
+          />
         </div>
 
         {loading && <SkeletonCard />}
@@ -119,14 +154,23 @@ export default function ScanPageClient() {
             </p>
             <div className="flex items-center gap-2">
               <button
-                onClick={refetch}
+                onClick={() => {
+                  if (imageError) {
+                    clearImageState();
+                  } else {
+                    refetch();
+                  }
+                }}
                 className="flex items-center gap-1.5 rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Try Again
               </button>
               <button
-                onClick={() => router.push("/scan")}
+                onClick={() => {
+                  clearImageState();
+                  router.push("/scan");
+                }}
                 className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -160,10 +204,10 @@ export default function ScanPageClient() {
           </div>
         )}
 
-        {!barcode && !ingredients && !loading && (
+        {!barcode && !ingredients && !loading && !imageLoading && !result && (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-8 text-center">
             <p className="text-sm text-[var(--text-secondary)]">
-              Scan a barcode, enter one manually, or paste ingredients above.
+              Scan a barcode, photograph a label, or paste ingredients above.
             </p>
           </div>
         )}
