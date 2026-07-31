@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Leaf shape -->
+  <path d="M32 6C18 6 8 18 8 32c0 10 6 18 14 22 2-6 6-12 10-16 4 4 8 10 10 16 8-4 14-12 14-22C56 18 46 6 32 6z" fill="#22c55e"/>
+  <!-- Inner vein -->
+  <path d="M32 14c-8 0-14 8-14 18s4 12 8 14c1-4 3-8 6-11 3 3 5 7 6 11 4-2 8-8 8-14s-6-18-14-18z" fill="#16a34a" opacity="0.6"/>
+  <!-- Scan line -->
+  <line x1="12" y1="32" x2="52" y2="32" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+  <!-- Scan dots -->
+  <circle cx="12" cy="32" r="2" fill="white" opacity="0.9"/>
+  <circle cx="52" cy="32" r="2" fill="white" opacity="0.9"/>
+</svg>

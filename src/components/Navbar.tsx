@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTheme } from "./ThemeProvider";
 import { UserButton, useUser } from "@clerk/nextjs";
-import { Moon, Sun, Leaf, User, LayoutDashboard } from "lucide-react";
+import { Moon, Sun, User, LayoutDashboard } from "lucide-react";
 
 export default function Navbar() {
   const { theme, toggle } = useTheme();
@@ -13,7 +13,8 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 border-b border-[var(--border)] bg-white/80 backdrop-blur-md dark:bg-[var(--bg)]/80">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <Leaf className="h-6 w-6 text-green-600" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="NutriScan" className="h-7 w-7" />
           <span className="text-lg font-bold tracking-tight">
             NutriScan
           </span>

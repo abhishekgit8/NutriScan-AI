@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 import BarcodeInput from "@/components/BarcodeInput";
-import { Leaf, Zap, Brain, Shield, ShieldCheck, Camera, Image as ImageIcon, Type } from "lucide-react";
+import { Zap, Brain, Shield, ShieldCheck, Camera, Image as ImageIcon, Type } from "lucide-react";
 
 export default function Home() {
   return (
@@ -9,8 +9,9 @@ export default function Home() {
 
       <main className="mx-auto max-w-5xl px-4 py-16 md:py-24">
         <section className="flex flex-col items-center text-center">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-600 text-white shadow-lg shadow-green-600/20">
-            <Leaf className="h-7 w-7" />
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-600 shadow-lg shadow-green-600/20">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="NutriScan" className="h-10 w-10" />
           </div>
 
           <h1 className="text-3xl font-bold leading-tight tracking-tight md:text-5xl">
