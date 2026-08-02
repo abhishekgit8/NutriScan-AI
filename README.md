@@ -25,7 +25,7 @@ Scan any food product barcode and get instant AI-powered health analysis, ingred
 | **Database** | Supabase (PostgreSQL) | User profiles, scan history, product cache |
 | **Cache** | Upstash Redis | API response caching (24hr TTL) |
 | **AI Primary** | NaraRouter (Agnes 2.5 Flash — free tier) | Text + vision analysis |
-| **AI Fallback 1** | OpenRouter (Gemma 4 31B — free tier) | Text + vision backup |
+| **AI Fallback 1** | OpenRouter (Gemma 4 31B — free tier) | Text-only analysis |
 | **AI Fallback 2** | Groq (Llama 3.3 70B — free tier) | Text-only backup |
 | **AI Fallback 3** | Google Gemini 2.0 Flash | Vision backup (paid, rate-limited) |
 | **Local Fallback** | Custom rules engine | Ingredient keyword analysis when all AIs are down |
