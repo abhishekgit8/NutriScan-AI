@@ -269,15 +269,17 @@ async function fetchFromOpenFoodFacts(barcode: string) {
   return res.json();
 }
 
-async function analyzeWithAI(productName: string, ingredientsText: string, activeTags: HealthTag[]) {
-  const apiKey = process.env.NARA_API_KEY;
-  if (!apiKey) throw new Error("NARA_API_KEY not configured");
+// --- Generic OpenAI-Compatible API Caller ---
 
-  const tagContext = activeTags.length > 0
-    ? `\nUser Health Profile: ${activeTags.join(", ")}\nFlag ingredients that conflict with these health conditions.`
-    : "";
+interface OpenAIProvider {
+  name: string;
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+}
 
-  const prompt = `You are a nutrition expert. Analyze this food product and return ONLY a JSON object (no markdown, no code blocks):
+function buildAnalysisPrompt(productName: string, ingredientsText: string, tagContext: string): string {
+  return `You are a nutrition expert. Analyze this food product and return ONLY a JSON object (no markdown, no code blocks):
 
 {
   "healthScore": <number 1-100>,
@@ -292,19 +294,33 @@ async function analyzeWithAI(productName: string, ingredientsText: string, activ
 
 Product: ${productName}
 Ingredients: ${ingredientsText || "Not available"}${tagContext}`;
+}
 
+async function callOpenAICompatible(
+  provider: OpenAIProvider,
+  prompt: string
+): Promise<{
+  healthScore: number;
+  riskTier: RiskTier;
+  analysis: string;
+  pros: string[];
+  cons: string[];
+  summaryPoints: string[];
+  flaggedIngredients: FlaggedIngredient[];
+  alertMessage?: string;
+}> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const response = await fetch("https://router.bynara.id/v1/chat/completions", {
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${provider.apiKey}`,
       },
       body: JSON.stringify({
-        model: "agnes-2.5-flash",
+        model: provider.model,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
       }),
@@ -313,11 +329,11 @@ Ingredients: ${ingredientsText || "Not available"}${tagContext}`;
 
     clearTimeout(timeout);
 
-    if (!response.ok) throw new Error(`NaraRouter ${response.status}`);
+    if (!response.ok) throw new Error(`${provider.name} ${response.status}`);
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No AI response content");
+    if (!content) throw new Error(`No response from ${provider.name}`);
 
     let jsonStr = content;
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -346,29 +362,107 @@ Ingredients: ${ingredientsText || "Not available"}${tagContext}`;
   }
 }
 
+function getTagContext(activeTags: HealthTag[]): string {
+  return activeTags.length > 0
+    ? `\nUser Health Profile: ${activeTags.join(", ")}\nFlag ingredients that conflict with these health conditions.`
+    : "";
+}
+
+// --- Provider Configs ---
+
+function getNaraRouter(): OpenAIProvider | null {
+  const key = process.env.NARA_API_KEY;
+  if (!key) return null;
+  return { name: "NaraRouter", baseUrl: "https://router.bynara.id/v1", model: "agnes-2.5-flash", apiKey: key };
+}
+
+function getOpenRouter(): OpenAIProvider | null {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return null;
+  return { name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "google/gemma-4-31b-it:free", apiKey: key };
+}
+
+function getGroq(): OpenAIProvider | null {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  return { name: "Groq", baseUrl: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile", apiKey: key };
+}
+
+// --- AI Analysis with Full Fallback Chain ---
+
+async function analyzeWithAIChain(
+  productName: string,
+  ingredientsText: string,
+  activeTags: HealthTag[]
+): Promise<{
+  healthScore: number;
+  riskTier: RiskTier;
+  analysis: string;
+  pros: string[];
+  cons: string[];
+  summaryPoints: string[];
+  flaggedIngredients: FlaggedIngredient[];
+  alertMessage?: string;
+}> {
+  const tagContext = getTagContext(activeTags);
+  const prompt = buildAnalysisPrompt(productName, ingredientsText, tagContext);
+
+  // 1. NaraRouter (primary)
+  const nara = getNaraRouter();
+  if (nara) {
+    try {
+      const result = await callOpenAICompatible(nara, prompt);
+      console.log(`NaraRouter OK: score=${result.healthScore}`);
+      return result;
+    } catch (err) {
+      console.warn("NaraRouter failed:", err);
+    }
+  }
+
+  // 2. OpenRouter (fallback)
+  const openrouter = getOpenRouter();
+  if (openrouter) {
+    try {
+      const result = await callOpenAICompatible(openrouter, prompt);
+      console.log(`OpenRouter OK: score=${result.healthScore}`);
+      return result;
+    } catch (err) {
+      console.warn("OpenRouter failed:", err);
+    }
+  }
+
+  // 3. Groq (text-only fallback)
+  const groq = getGroq();
+  if (groq) {
+    try {
+      const result = await callOpenAICompatible(groq, prompt);
+      console.log(`Groq OK: score=${result.healthScore}`);
+      return result;
+    } catch (err) {
+      console.warn("Groq failed:", err);
+    }
+  }
+
+  // 4. Gemini (Google fallback)
+  try {
+    const result = await analyzeWithGemini(productName, ingredientsText, activeTags);
+    console.log(`Gemini OK: score=${result.healthScore}`);
+    return result;
+  } catch (err) {
+    console.warn("Gemini failed:", err);
+  }
+
+  // 5. Local engine (final fallback)
+  console.log("All AI providers failed, using local analysis");
+  return analyzeIngredients(ingredientsText, activeTags);
+}
+
 async function analyzeWithGemini(productName: string, ingredientsText: string, activeTags: HealthTag[]) {
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
-  const tagContext = activeTags.length > 0
-    ? `\nUser Health Profile: ${activeTags.join(", ")}\nFlag ingredients that conflict with these health conditions.`
-    : "";
-
-  const prompt = `You are a nutrition expert. Analyze this food product and return ONLY a JSON object (no markdown, no code blocks):
-
-{
-  "healthScore": <number 1-100>,
-  "riskTier": "<safe|caution|high_risk>",
-  "analysis": "<2-3 sentences about the product's healthiness>",
-  "pros": ["<pro 1>", "<pro 2>", "<pro 3>"],
-  "cons": ["<con 1>", "<con 2>", "<con 3>"],
-  "summaryPoints": ["<point 1>", "<point 2>", "<point 3>"],
-  "flaggedIngredients": [{"name": "<ingredient>", "reason": "<why>", "severity": "<low|medium|high>"}],
-  "alertMessage": "<health warning string or null>"
-}
-
-Product: ${productName}
-Ingredients: ${ingredientsText || "Not available"}${tagContext}`;
+  const tagContext = getTagContext(activeTags);
+  const prompt = buildAnalysisPrompt(productName, ingredientsText, tagContext);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -527,13 +621,9 @@ export async function GET(request: NextRequest) {
 
       let reAnalysis;
       try {
-        reAnalysis = await analyzeWithAI(productName, ingredientsText, activeTags);
+        reAnalysis = await analyzeWithAIChain(productName, ingredientsText, activeTags);
       } catch {
-        try {
-          reAnalysis = await analyzeWithGemini(productName, ingredientsText, activeTags);
-        } catch {
-          reAnalysis = analyzeIngredients(ingredientsText, activeTags);
-        }
+        reAnalysis = analyzeIngredients(ingredientsText, activeTags);
       }
 
       const result = {
@@ -597,18 +687,9 @@ export async function GET(request: NextRequest) {
     // 4. Analysis: try AI, fallback to local engine
     let aiResult;
     try {
-      aiResult = await analyzeWithAI(productName, ingredientsText, activeTags);
-      console.log(`NaraRouter analysis OK for ${barcode}: score=${aiResult.healthScore}`);
-    } catch (naraErr) {
-      console.warn("NaraRouter failed:", naraErr);
-      try {
-        aiResult = await analyzeWithGemini(productName, ingredientsText, activeTags);
-        console.log(`Gemini analysis OK for ${barcode}: score=${aiResult.healthScore}`);
-      } catch (geminiErr) {
-        console.warn("Gemini failed, using local analysis:", geminiErr);
-        aiResult = analyzeIngredients(ingredientsText, activeTags);
-        console.log(`Local analysis for ${barcode}: score=${aiResult.healthScore}, pros=${aiResult.pros.length}, cons=${aiResult.cons.length}`);
-      }
+      aiResult = await analyzeWithAIChain(productName, ingredientsText, activeTags);
+    } catch {
+      aiResult = analyzeIngredients(ingredientsText, activeTags);
     }
 
     const result = {

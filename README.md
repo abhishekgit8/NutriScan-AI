@@ -8,7 +8,7 @@ Scan any food product barcode and get instant AI-powered health analysis, ingred
 
 - **Barcode Scanning** — Scan barcodes using your phone camera (native `BarcodeDetector` API) or enter manually
 - **Health Scoring** — Products rated 1-100 with color-coded score rings
-- **AI Analysis** — Detailed health summary powered by NaraRouter (GLM-5.2) with Gemini fallback
+- **AI Analysis** — Detailed health summary powered by 4-tier fallback: NaraRouter → OpenRouter → Gemini → Local engine
 - **Pros & Cons** — Clear breakdown of what's good and bad about a product
 - **Ingredient Breakdown** — Full ingredient list with alerts for harmful additives
 - **Product Caching** — Scanned products cached for instant re-loading
@@ -24,9 +24,11 @@ Scan any food product barcode and get instant AI-powered health analysis, ingred
 | **Auth** | Clerk | Google + email/password login, guest mode |
 | **Database** | Supabase (PostgreSQL) | User profiles, scan history, product cache |
 | **Cache** | Upstash Redis | API response caching (24hr TTL) |
-| **AI Primary** | NaraRouter (Agnes 2.5 Flash — free tier) | Health analysis generation |
-| **AI Fallback** | Google Gemini 2.0 Flash | Backup AI when NaraRouter is unavailable |
-| **Local Fallback** | Custom rules engine | Ingredient keyword analysis when both AIs are down |
+| **AI Primary** | NaraRouter (Agnes 2.5 Flash — free tier) | Text + vision analysis |
+| **AI Fallback 1** | OpenRouter (Gemma 4 31B — free tier) | Text + vision backup |
+| **AI Fallback 2** | Groq (Llama 3.3 70B — free tier) | Text-only backup |
+| **AI Fallback 3** | Google Gemini 2.0 Flash | Vision backup (paid, rate-limited) |
+| **Local Fallback** | Custom rules engine | Ingredient keyword analysis when all AIs are down |
 | **Product Data** | Open Food Facts API | Barcode → product info (name, ingredients, brand) |
 | **Analytics** | PostHog | Usage tracking (opted out by default) |
 | **Webhooks** | Svix | Clerk webhook signature verification |
@@ -42,7 +44,7 @@ Scan Request
   → Redis cache check (instant)
   → Supabase cache check
   → Open Food Facts API (barcode lookup)
-  → AI Analysis: NaraRouter → Gemini → Local Engine (3-tier fallback)
+  → AI Analysis: NaraRouter → OpenRouter → Groq → Gemini → Local Engine (5-tier fallback)
   → Cache result in Redis + Supabase
   → Return to client
 ```
@@ -70,6 +72,8 @@ UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 NARA_API_KEY=
 NEXT_PUBLIC_GEMINI_API_KEY=
+OPENROUTER_API_KEY=
+GROQ_API_KEY=
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=
 ```
