@@ -22,10 +22,11 @@ interface Props {
   onImageError?: (msg: string) => void;
   onImageLoading?: (loading: boolean) => void;
   tags?: string[];
+  defaultMode?: InputMode;
 }
 
-export default function BarcodeInput({ onImageResult, onImageError, onImageLoading, tags = [] }: Props) {
-  const [mode, setMode] = useState<InputMode>("barcode");
+export default function BarcodeInput({ onImageResult, onImageError, onImageLoading, tags = [], defaultMode }: Props) {
+  const [mode, setMode] = useState<InputMode>(defaultMode || "barcode");
   const [barcode, setBarcode] = useState("");
   const [ingredientText, setIngredientText] = useState("");
   const [showScanner, setShowScanner] = useState(false);

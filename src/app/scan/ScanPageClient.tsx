@@ -64,9 +64,7 @@ function useScanFetcher(barcode: string | null, ingredients: string | null) {
   return { result, loading, error, refetch };
 }
 
-function ProductNotFound({ barcode, onReset }: { barcode: string; onReset: () => void }) {
-  const router = useRouter();
-
+function ProductNotFound({ barcode, onReset, onSwitchMode }: { barcode: string; onReset: () => void; onSwitchMode: (mode: "image" | "text") => void }) {
   return (
     <div className="animate-fade-in rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
@@ -85,10 +83,7 @@ function ProductNotFound({ barcode, onReset }: { barcode: string; onReset: () =>
 
         <div className="grid grid-cols-1 gap-2">
           <button
-            onClick={() => {
-              onReset();
-              router.push("/scan");
-            }}
+            onClick={() => onSwitchMode("image")}
             className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition hover:bg-[var(--bg-secondary)]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">
@@ -103,12 +98,7 @@ function ProductNotFound({ barcode, onReset }: { barcode: string; onReset: () =>
           </button>
 
           <button
-            onClick={() => {
-              onReset();
-              // Switch to image tab with food mode will need parent state
-              // For now, redirect to scan page where user can use Image tab
-              router.push("/scan");
-            }}
+            onClick={() => onSwitchMode("image")}
             className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition hover:bg-[var(--bg-secondary)]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30">
@@ -123,10 +113,7 @@ function ProductNotFound({ barcode, onReset }: { barcode: string; onReset: () =>
           </button>
 
           <button
-            onClick={() => {
-              onReset();
-              router.push("/scan");
-            }}
+            onClick={() => onSwitchMode("text")}
             className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition hover:bg-[var(--bg-secondary)]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/30">
@@ -167,6 +154,7 @@ export default function ScanPageClient() {
   const [imageError, setImageError] = useState<string | null>(null);
 
   const [isSaved, setIsSaved] = useState(false);
+  const [switchMode, setSwitchMode] = useState<"image" | "text" | null>(null);
 
   // Merge results
   const result = urlResult || imageResult;
@@ -203,6 +191,14 @@ export default function ScanPageClient() {
     setImageLoading(false);
   };
 
+  // Clear switchMode after BarcodeInput has rendered with it
+  useEffect(() => {
+    if (switchMode) {
+      const t = setTimeout(() => setSwitchMode(null), 100);
+      return () => clearTimeout(t);
+    }
+  }, [switchMode]);
+
   const resetAll = () => {
     clearImageState();
     router.push("/scan");
@@ -220,6 +216,7 @@ export default function ScanPageClient() {
 
         <div className="mb-6">
           <BarcodeInput
+            defaultMode={switchMode || undefined}
             onImageResult={(data) => {
               clearImageState();
               setImageResult(data as ScanResult);
@@ -247,7 +244,15 @@ export default function ScanPageClient() {
 
         {/* Product Not Found — friendly fallback */}
         {isNotFound && barcode && (
-          <ProductNotFound barcode={barcode} onReset={clearImageState} />
+          <ProductNotFound
+            barcode={barcode}
+            onReset={clearImageState}
+            onSwitchMode={(mode) => {
+              clearImageState();
+              setSwitchMode(mode);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
         )}
 
         {/* Generic error */}
