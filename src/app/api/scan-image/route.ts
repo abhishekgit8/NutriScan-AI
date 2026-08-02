@@ -3,7 +3,6 @@ import { HealthTag, ImageScanMode, RiskTier } from "@/types";
 import { getRiskTierFromScore } from "@/lib/utils";
 
 const NARA_API_URL = "https://router.bynara.id/v1/chat/completions";
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // --- Prompts ---
@@ -112,61 +111,6 @@ async function callNaraRouterVision(
   }
 }
 
-// --- OpenRouter Vision (Fallback 1) ---
-
-async function callOpenRouterVision(
-  base64Image: string,
-  prompt: string
-): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-
-  try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemma-4-31b-it:free",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              {
-                type: "image_url",
-                image_url: { url: base64Image },
-              },
-            ],
-          },
-        ],
-        temperature: 0.3,
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`OpenRouter ${response.status}: ${errBody}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No response content from OpenRouter");
-    return content;
-  } catch (err) {
-    clearTimeout(timeout);
-    throw err;
-  }
-}
-
 // --- Gemini Vision (Fallback) ---
 
 async function callGeminiVision(
@@ -232,15 +176,10 @@ async function handleIngredientsMode(
   } catch (naraErr) {
     console.warn("NaraRouter vision failed for ingredients:", naraErr);
     try {
-      extractedText = await callOpenRouterVision(base64Image, getIngredientsPrompt());
-    } catch (openrouterErr) {
-      console.warn("OpenRouter vision failed:", openrouterErr);
-      try {
-        extractedText = await callGeminiVision(base64Image, getIngredientsPrompt());
-      } catch (geminiErr) {
-        console.warn("Gemini vision failed:", geminiErr);
-        throw new Error("Could not extract ingredients from image. Please try again or paste ingredients manually.");
-      }
+      extractedText = await callGeminiVision(base64Image, getIngredientsPrompt());
+    } catch (geminiErr) {
+      console.warn("Gemini vision failed:", geminiErr);
+      throw new Error("Could not extract ingredients from image. Please try again or paste ingredients manually.");
     }
   }
 
@@ -293,28 +232,24 @@ Ingredients: ${extractedText}${tagContext}`;
     analysisContent = await callNaraRouterVision(base64Image, analysisPrompt);
   } catch {
     try {
-      analysisContent = await callOpenRouterVision(base64Image, analysisPrompt);
+      analysisContent = await callGeminiVision(base64Image, analysisPrompt);
     } catch {
-      try {
-        analysisContent = await callGeminiVision(base64Image, analysisPrompt);
-      } catch {
-        // Fallback: return extracted text without AI analysis
-        const ingredients = extractedText.split(",").map((s: string) => s.trim()).filter(Boolean);
-        return {
-          barcode: "image",
-          productName: "Scanned Label",
-          ingredientsText: extractedText,
-          ingredients,
-          healthScore: 50,
-          riskTier: "caution" as RiskTier,
-          analysis: `Extracted ${ingredients.length} ingredients from label. AI analysis unavailable.`,
-          pros: [],
-          cons: [],
-          summaryPoints: [`Extracted ${ingredients.length} ingredients`],
-          flaggedIngredients: [],
-          alertMessage: undefined,
-        };
-      }
+      // Fallback: return extracted text without AI analysis
+      const ingredients = extractedText.split(",").map((s: string) => s.trim()).filter(Boolean);
+      return {
+        barcode: "image",
+        productName: "Scanned Label",
+        ingredientsText: extractedText,
+        ingredients,
+        healthScore: 50,
+        riskTier: "caution" as RiskTier,
+        analysis: `Extracted ${ingredients.length} ingredients from label. AI analysis unavailable.`,
+        pros: [],
+        cons: [],
+        summaryPoints: [`Extracted ${ingredients.length} ingredients`],
+        flaggedIngredients: [],
+        alertMessage: undefined,
+      };
     }
   }
 
@@ -358,15 +293,10 @@ async function handleFoodMode(
   } catch (naraErr) {
     console.warn("NaraRouter vision failed for food:", naraErr);
     try {
-      content = await callOpenRouterVision(base64Image, getFoodAnalysisPrompt(activeTags));
-    } catch (openrouterErr) {
-      console.warn("OpenRouter vision failed:", openrouterErr);
-      try {
-        content = await callGeminiVision(base64Image, getFoodAnalysisPrompt(activeTags));
-      } catch (geminiErr) {
-        console.warn("Gemini vision failed:", geminiErr);
-        throw new Error("Could not analyze food image. Please try again.");
-      }
+      content = await callGeminiVision(base64Image, getFoodAnalysisPrompt(activeTags));
+    } catch (geminiErr) {
+      console.warn("Gemini vision failed:", geminiErr);
+      throw new Error("Could not analyze food image. Please try again.");
     }
   }
 
