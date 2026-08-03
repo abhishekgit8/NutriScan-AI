@@ -1,12 +1,9 @@
 "use client";
 
 import { ScanResult } from "@/types";
-import { RiskScoreRing } from "./RiskBadge";
 import IngredientsList from "./IngredientsList";
-import SummaryPoints from "./SummaryPoints";
-import AlertBanner from "./AlertBanner";
-import ShareButton from "./ShareButton";
-import { Bookmark, ThumbsUp, ThumbsDown, Tag } from "lucide-react";
+import { AlertTriangle, ChevronDown, Share2, Bookmark } from "lucide-react";
+import { useState } from "react";
 
 interface Props {
   result: ScanResult;
@@ -14,118 +11,243 @@ interface Props {
   isSaved?: boolean;
 }
 
+function getGrade(score: number): { letter: string; color: string; bgColor: string; textColor: string } {
+  if (score >= 80) return { letter: "A", color: "#006c49", bgColor: "rgba(16, 185, 129, 0.15)", textColor: "#00422b" };
+  if (score >= 60) return { letter: "B", color: "#006c49", bgColor: "rgba(16, 185, 129, 0.1)", textColor: "#00422b" };
+  if (score >= 40) return { letter: "C", color: "#855300", bgColor: "rgba(254, 166, 25, 0.15)", textColor: "#684000" };
+  if (score >= 20) return { letter: "D", color: "#855300", bgColor: "rgba(254, 166, 25, 0.2)", textColor: "#684000" };
+  return { letter: "E", color: "#bc0b3b", bgColor: "rgba(255, 120, 134, 0.15)", textColor: "#780021" };
+}
+
 export default function ScanResults({ result, onSave, isSaved }: Props) {
+  const grade = getGrade(result.healthScore);
+  const [showAllergens, setShowAllergens] = useState(false);
+
   return (
-    <div className="animate-fade-in space-y-4">
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold md:text-2xl">{result.productName}</h2>
-              {result.category && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                  <Tag className="h-3 w-3" />
-                  {result.category}
-                </span>
-              )}
-            </div>
-            {result.brand && (
-              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-                {result.brand}
-              </p>
-            )}
+    <div className="animate-fade-in space-y-5">
+      {/* Product Summary */}
+      <section className="flex items-center gap-4">
+        <div
+          className="w-20 h-20 rounded-xl overflow-hidden bg-white shadow-sm flex-shrink-0"
+          style={{ border: "1px solid var(--outline-variant)" }}
+        >
+          <div
+            className="w-full h-full flex items-center justify-center text-2xl"
+            style={{ backgroundColor: "var(--surface-container)", color: "var(--on-surface-variant)" }}
+          >
+            {result.productName.charAt(0)}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {onSave && (
-              <button
-                onClick={onSave}
-                className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition hover:bg-gray-50 dark:hover:bg-gray-800"
+        </div>
+        <div className="flex flex-col justify-center min-w-0">
+          {result.category && (
+            <p
+              className="text-xs font-bold uppercase tracking-wider"
+              style={{ color: "var(--secondary)" }}
+            >
+              {result.category}
+            </p>
+          )}
+          <h2
+            className="text-xl font-bold leading-tight truncate"
+            style={{ color: "var(--on-surface)", fontFamily: "Inter" }}
+          >
+            {result.productName}
+          </h2>
+          {result.brand && (
+            <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+              {result.brand}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Score Card Widget */}
+      <section
+        className="rounded-xl p-4 space-y-3"
+        style={{
+          backgroundColor: grade.bgColor,
+          border: `1px solid ${grade.color}20`,
+        }}
+      >
+        <div className="flex items-center gap-4">
+          <div
+            className="flex flex-col items-center justify-center rounded-xl shadow-md flex-shrink-0"
+            style={{
+              backgroundColor: grade.color,
+              color: "#ffffff",
+              width: "96px",
+              height: "96px",
+            }}
+          >
+            <span className="text-4xl font-extrabold leading-none" style={{ fontFamily: "Inter" }}>
+              {grade.letter}
+            </span>
+            <span className="text-xs font-bold opacity-80">{result.healthScore}/100</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1 mb-1">
+              <svg className="w-4 h-4" style={{ color: grade.color }} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+              </svg>
+              <span
+                className="text-xs font-bold uppercase tracking-wider"
+                style={{ color: grade.color }}
               >
-                <Bookmark
-                  className={`h-3.5 w-3.5 ${isSaved ? "fill-green-600 text-green-600" : ""}`}
-                />
-                {isSaved ? "Saved" : "Save"}
-              </button>
-            )}
-            <ShareButton
-              productName={result.productName}
-              healthScore={result.healthScore}
-              barcode={result.barcode}
-            />
+                AI Summary
+              </span>
+            </div>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: "var(--on-surface)" }}
+            >
+              {result.analysis}
+            </p>
           </div>
         </div>
+      </section>
 
-        <div className="mt-4 flex justify-center">
-          <RiskScoreRing tier={result.riskTier} score={result.healthScore} />
-        </div>
-      </div>
-
-      {result.alertMessage && <AlertBanner message={result.alertMessage} />}
-
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          Summary
-        </h3>
-        <p className="text-sm leading-relaxed text-[var(--text)]">
-          {result.analysis}
-        </p>
-      </div>
-
-      {(result.pros?.length > 0 || result.cons?.length > 0) && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {result.pros?.length > 0 && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 p-5 dark:border-green-900 dark:bg-green-950/30">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">
-                <ThumbsUp className="h-4 w-4" />
-                Pros
-              </h3>
-              <ul className="space-y-2">
-                {result.pros.map((pro, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-green-800 dark:text-green-300">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />
-                    {pro}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {result.cons?.length > 0 && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/30">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-red-700 dark:text-red-400">
-                <ThumbsDown className="h-4 w-4" />
-                Cons
-              </h3>
-              <ul className="space-y-2">
-                {result.cons.map((con, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-red-800 dark:text-red-300">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
-                    {con}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+      {/* Red Flags Section */}
+      {result.cons && result.cons.length > 0 && (
+        <section className="space-y-3">
+          <h3
+            className="flex items-center gap-2 text-lg font-semibold"
+            style={{ color: "var(--on-surface)", fontFamily: "Inter" }}
+          >
+            <AlertTriangle className="h-5 w-5" style={{ color: "var(--tertiary)" }} />
+            Red Flags
+          </h3>
+          <div className="space-y-2">
+            {result.cons.map((con, i) => (
+              <div
+                key={i}
+                className="glass-card flex items-start gap-3 p-4 rounded-xl"
+              >
+                <div
+                  className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+                  style={{ backgroundColor: "var(--tertiary)" }}
+                />
+                <div>
+                  <h4 className="font-semibold" style={{ color: "var(--on-surface)" }}>
+                    {con.split("—")[0].split(":")[0].trim()}
+                  </h4>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--on-surface-variant)" }}
+                  >
+                    {con.includes("—") ? con.split("—")[1].trim() : con.includes(":") ? con.split(":").slice(1).join(":").trim() : con}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
-      {result.summaryPoints.length > 0 && (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
-          <SummaryPoints points={result.summaryPoints} />
-        </div>
+      {/* Pros Section */}
+      {result.pros && result.pros.length > 0 && (
+        <section className="space-y-3">
+          <h3
+            className="flex items-center gap-2 text-lg font-semibold"
+            style={{ color: "var(--on-surface)", fontFamily: "Inter" }}
+          >
+            <svg className="w-5 h-5" style={{ color: "var(--primary)" }} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+            </svg>
+            Good Points
+          </h3>
+          <div className="space-y-2">
+            {result.pros.map((pro, i) => (
+              <div
+                key={i}
+                className="glass-card flex items-start gap-3 p-4 rounded-xl"
+              >
+                <div
+                  className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+                  style={{ backgroundColor: "var(--primary)" }}
+                />
+                <p className="text-sm" style={{ color: "var(--on-surface)" }}>
+                  {pro}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          Ingredients
+      {/* Ingredients Accordion */}
+      <section className="space-y-3">
+        <h3
+          className="text-lg font-semibold"
+          style={{ color: "var(--on-surface)", fontFamily: "Inter" }}
+        >
+          Full Ingredients
         </h3>
         <IngredientsList
           ingredients={result.ingredients}
           flagged={result.flaggedIngredients || []}
         />
+      </section>
+
+      {/* Allergens Accordion (placeholder) */}
+      <div
+        className="border overflow-hidden bg-white rounded-xl"
+        style={{ borderColor: "var(--outline-variant)" }}
+      >
+        <button
+          onClick={() => setShowAllergens(!showAllergens)}
+          className="flex w-full items-center justify-between p-4 transition-colors hover:bg-[var(--surface-container-low)]"
+        >
+          <span className="font-semibold" style={{ color: "var(--on-surface)" }}>
+            Allergens
+          </span>
+          <ChevronDown
+            className="h-5 w-5 transition-transform"
+            style={{
+              color: "var(--on-surface-variant)",
+              transform: showAllergens ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          />
+        </button>
+        {showAllergens && (
+          <div className="border-t px-4 pb-4" style={{ borderColor: "var(--outline-variant)" }}>
+            <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+              Check ingredient list for potential allergens.
+            </p>
+          </div>
+        )}
       </div>
 
-      <p className="text-center text-xs text-[var(--text-secondary)]">
+      {/* Action Buttons */}
+      <div className="flex items-center gap-3">
+        {onSave && (
+          <button
+            onClick={onSave}
+            className="flex-1 flex items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold transition-all active:scale-95"
+            style={{
+              backgroundColor: isSaved ? "var(--primary)" : "var(--surface-container)",
+              color: isSaved ? "var(--on-primary)" : "var(--on-surface)",
+              border: `1px solid ${isSaved ? "var(--primary)" : "var(--outline-variant)"}`,
+            }}
+          >
+            <Bookmark className="h-4 w-4" />
+            {isSaved ? "Saved" : "Save"}
+          </button>
+        )}
+        <button
+          className="flex-1 flex items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold transition-all active:scale-95"
+          style={{
+            backgroundColor: "var(--surface-container)",
+            color: "var(--on-surface)",
+            border: "1px solid var(--outline-variant)",
+          }}
+        >
+          <Share2 className="h-4 w-4" />
+          Share
+        </button>
+      </div>
+
+      {/* Barcode */}
+      <p className="text-center text-xs" style={{ color: "var(--on-surface-variant)" }}>
         {result.barcode}
       </p>
     </div>

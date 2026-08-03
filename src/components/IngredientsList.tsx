@@ -1,72 +1,108 @@
 "use client";
 
+import { useState } from "react";
 import { FlaggedIngredient } from "@/types";
-import { getFlaggedIngredientColor } from "@/lib/utils";
-import { AlertTriangle, Info } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 interface Props {
   ingredients: string[];
   flagged: FlaggedIngredient[];
 }
 
+function getIngredientSafety(
+  name: string,
+  flagged: FlaggedIngredient[]
+): { label: "Safe" | "Moderate" | "Risk"; color: string; bgColor: string } {
+  const clean = name.trim().toLowerCase();
+  const match = flagged.find(
+    (f) => clean.includes(f.name.toLowerCase()) || f.name.toLowerCase().includes(clean)
+  );
+
+  if (match) {
+    if (match.severity === "high") {
+      return { label: "Risk", color: "#780021", bgColor: "rgba(255, 120, 134, 0.25)" };
+    }
+    return { label: "Moderate", color: "#684000", bgColor: "rgba(254, 166, 25, 0.2)" };
+  }
+
+  return { label: "Safe", color: "#00422b", bgColor: "rgba(16, 185, 129, 0.2)" };
+}
+
 export default function IngredientsList({ ingredients, flagged }: Props) {
+  const [isOpen, setIsOpen] = useState(true);
+
   if (!ingredients.length) {
     return (
-      <p className="text-sm text-[var(--text-secondary)]">
+      <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
         No ingredients data available.
       </p>
     );
   }
 
-  const flaggedMap = new Map<string, FlaggedIngredient>();
-  for (const f of flagged) {
-    flaggedMap.set(f.name.toLowerCase(), f);
-  }
-
   return (
-    <div className="space-y-2">
-      {flagged.length > 0 && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 dark:bg-red-950/30">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" />
-          <span className="text-xs font-medium text-red-600 dark:text-red-400">
-            {flagged.length} ingredient{flagged.length > 1 ? "s" : ""} flagged for your health profile
-          </span>
+    <div
+      className="border overflow-hidden bg-white"
+      style={{
+        borderColor: "var(--outline-variant)",
+        borderRadius: "12px",
+      }}
+    >
+      {/* Accordion Header */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between p-4 transition-colors hover:bg-[var(--surface-container-low)]"
+      >
+        <span className="font-semibold" style={{ color: "var(--on-surface)" }}>
+          Main Ingredients ({ingredients.length})
+        </span>
+        <ChevronDown
+          className="h-5 w-5 transition-transform"
+          style={{
+            color: "var(--on-surface-variant)",
+            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        />
+      </button>
+
+      {/* Accordion Content */}
+      {isOpen && (
+        <div className="border-t" style={{ borderColor: "var(--outline-variant)" }}>
+          {ingredients.map((ingredient, i) => {
+            const safety = getIngredientSafety(ingredient, flagged);
+            return (
+              <div
+                key={i}
+                className="flex items-center justify-between px-4 py-3"
+                style={{
+                  borderBottom: i < ingredients.length - 1 ? "1px solid var(--outline-variant)" : "none",
+                }}
+              >
+                <span
+                  className="text-sm"
+                  style={{
+                    color: "var(--on-surface)",
+                    fontFamily: "Inter",
+                    fontSize: "15px",
+                    lineHeight: "22px",
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  {ingredient.trim()}
+                </span>
+                <span
+                  className="px-2 py-0.5 text-xs font-bold rounded-full"
+                  style={{
+                    backgroundColor: safety.bgColor,
+                    color: safety.color,
+                  }}
+                >
+                  {safety.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
-
-      <div className="flex flex-wrap gap-1.5">
-        {ingredients.map((ingredient, i) => {
-          const clean = ingredient.trim().toLowerCase();
-          const match = flaggedMap.get(clean) ||
-            [...flaggedMap.values()].find((f) => clean.includes(f.name));
-
-          if (match) {
-            return (
-              <span
-                key={i}
-                className={`tooltip-trigger inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${getFlaggedIngredientColor(match.severity)}`}
-              >
-                {ingredient.trim()}
-                <Info className="h-3 w-3 opacity-60" />
-                <span className="tooltip-content">
-                  <strong>{match.reason}</strong>
-                  <br />
-                  Severity: {match.severity}
-                </span>
-              </span>
-            );
-          }
-
-          return (
-            <span
-              key={i}
-              className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-            >
-              {ingredient.trim()}
-            </span>
-          );
-        })}
-      </div>
     </div>
   );
 }

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HealthScan - Camera Scanner</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "inverse-surface": "#213145",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "primary-fixed": "#6ffbbe",
+                "surface-container": "#e5eeff",
+                "surface-tint": "#006c49",
+                "on-primary-fixed-variant": "#005236",
+                "on-secondary-container": "#684000",
+                "surface-bright": "#f8f9ff",
+                "secondary": "#855300",
+                "secondary-fixed": "#ffddb8",
+                "on-surface": "#0b1c30",
+                "primary-fixed-dim": "#4edea3",
+                "on-surface-variant": "#3c4a42",
+                "on-tertiary-container": "#780021",
+                "secondary-fixed-dim": "#ffb95f",
+                "error": "#ba1a1a",
+                "inverse-primary": "#4edea3",
+                "tertiary-container": "#ff7886",
+                "on-tertiary-fixed": "#40000d",
+                "outline-variant": "#bbcabf",
+                "surface-container-highest": "#d3e4fe",
+                "on-secondary-fixed-variant": "#653e00",
+                "on-background": "#0b1c30",
+                "on-tertiary": "#ffffff",
+                "on-tertiary-fixed-variant": "#92002a",
+                "on-primary": "#ffffff",
+                "on-error": "#ffffff",
+                "error-container": "#ffdad6",
+                "surface-variant": "#d3e4fe",
+                "background": "#f8f9ff",
+                "surface-dim": "#cbdbf5",
+                "primary-container": "#10b981",
+                "on-error-container": "#93000a",
+                "tertiary": "#bc0b3b",
+                "on-primary-fixed": "#002113",
+                "surface": "#f8f9ff",
+                "surface-container-low": "#eff4ff",
+                "tertiary-fixed-dim": "#ffb2b7",
+                "tertiary-fixed": "#ffdadb",
+                "on-primary-container": "#00422b",
+                "secondary-container": "#fea619",
+                "on-secondary-fixed": "#2a1700",
+                "surface-container-high": "#dce9ff",
+                "primary": "#006c49",
+                "outline": "#6c7a71",
+                "inverse-on-surface": "#eaf1ff"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "md": "16px",
+                "stack-gap": "12px",
+                "xl": "32px",
+                "unit": "4px",
+                "container-padding": "20px",
+                "sm": "8px",
+                "xs": "4px",
+                "lg": "24px"
+            },
+            "fontFamily": {
+                "headline-lg": ["Inter"],
+                "ingredient-list": ["Inter"],
+                "headline-md": ["Inter"],
+                "body-sm": ["Inter"],
+                "display-score": ["Inter"],
+                "label-caps": ["Inter"],
+                "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                "ingredient-list": ["15px", {"lineHeight": "22px", "letterSpacing": "0.01em", "fontWeight": "400"}],
+                "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "display-score": ["48px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scan-glow {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4), inset 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+        .shimmer-anim {
+            animation: shimmer 2s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .viewfinder-mask {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+        }
+    </style>
+</head>
+<body class="bg-inverse-surface text-on-primary antialiased overflow-hidden h-screen w-screen flex flex-col">
+<!-- Camera Viewfinder Background -->
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-cover bg-center" data-alt="A high-resolution, slightly out-of-focus background of a modern, brightly lit grocery store aisle with colorful organic food products on shelves. The lighting is clinical yet warm, emphasizing a clean and professional health-conscious environment. The depth of field is shallow, creating a soft bokeh effect that suggests the point of view of a smartphone camera looking at a product." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDLXlIyTZ0nL2X1f0pKOBp9QH4y9EDA_sj0zy-pDlQD9C-brNo4Uik2flfcHUjAkgaJRNlUT4_XFxLmGXUaA3gdA9MhZX2ljqn_dFtJ2oQh0_hVXjRfD3h5EP2kq0dN5ylvfXnGzoT6fwpLqL0tR_cKAhD9QSgwAnbeIce1fmuccr2PaEIhNG9_h2xj47Cu-BCayIvzLA1BSiPGRhIXz9leqSLl4EaP5_pYObHDxetK9C4Fc1rcyzDXzg')"></div>
+<!-- Scanning Laser Line -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 pointer-events-none z-10 overflow-hidden">
+<div class="w-full h-1 bg-primary-container/80 blur-sm absolute shimmer-anim"></div>
+</div>
+</div>
+<!-- Top Overlay: Status Bar & Controls -->
+<header class="relative z-20 flex items-center justify-between px-container-padding pt-12 pb-md">
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-md text-white active:scale-90 transition-transform">
+<span class="material-symbols-outlined">flash_on</span>
+</button>
+<div class="bg-black/30 backdrop-blur-md px-4 py-2 rounded-full">
+<span class="font-headline-md text-headline-md text-white">HealthScan</span>
+</div>
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-md text-white active:scale-90 transition-transform">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</header>
+<!-- Center: Scan Frame Box -->
+<main class="flex-grow relative z-10 flex flex-col items-center justify-center px-container-padding">
+<!-- Viewfinder Brackets -->
+<div class="relative w-72 h-72 border-2 border-primary-container/40 rounded-3xl scan-glow">
+<!-- Corner Accents -->
+<div class="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-primary-container rounded-tl-xl"></div>
+<div class="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-primary-container rounded-tr-xl"></div>
+<div class="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-primary-container rounded-bl-xl"></div>
+<div class="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-primary-container rounded-br-xl"></div>
+</div>
+<p class="mt-xl font-body-lg text-body-lg text-white text-center drop-shadow-md px-md">
+            Align barcode or ingredient label inside box.
+        </p>
+</main>
+<!-- Bottom Overlay: Controls Deck -->
+<section class="relative z-20 pb-12 pt-md px-container-padding">
+<div class="bg-black/40 backdrop-blur-xl border border-white/10 p-md rounded-[32px] shadow-2xl">
+<!-- Segmented Control -->
+<div class="flex bg-white/10 p-1 rounded-full mb-lg relative">
+<div class="absolute top-1 left-1 bottom-1 w-[calc(50%-4px)] bg-primary-container rounded-full transition-all duration-300 ease-out" id="mode-glider"></div>
+<button class="relative z-10 flex-1 py-3 font-label-caps text-label-caps text-white transition-colors" id="btn-barcode" onclick="switchMode('barcode')">
+                    BARCODE MODE
+                </button>
+<button class="relative z-10 flex-1 py-3 font-label-caps text-label-caps text-white transition-colors" id="btn-photo" onclick="switchMode('photo')">
+                    PHOTO LABEL MODE
+                </button>
+</div>
+<!-- Action Row -->
+<div class="flex items-center justify-between px-md">
+<button class="flex flex-col items-center gap-1 group">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-white">photo_library</span>
+</div>
+<span class="font-label-caps text-label-caps text-white/70">Gallery</span>
+</button>
+<div class="relative">
+<!-- Ring effect -->
+<div class="absolute -inset-2 border-2 border-primary-container/30 rounded-full animate-pulse"></div>
+<button class="w-20 h-20 bg-white rounded-full flex items-center justify-center active:scale-95 transition-transform shadow-xl">
+<div class="w-16 h-16 border-2 border-inverse-surface rounded-full"></div>
+</button>
+</div>
+<button class="flex flex-col items-center gap-1 group">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-white">history</span>
+</div>
+<span class="font-label-caps text-label-caps text-white/70">History</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Navigation Bar (Shared Component Reference) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-lg pb-sm pt-xs bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl shadow-lg rounded-t-xl">
+<div class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-full w-12 h-12">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">qr_code_scanner</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary dark:hover:text-primary-fixed transition-all">
+<span class="material-symbols-outlined">history</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary dark:hover:text-primary-fixed transition-all">
+<span class="material-symbols-outlined">favorite</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary dark:hover:text-primary-fixed transition-all">
+<span class="material-symbols-outlined">person</span>
+</div>
+</nav>
+<script>
+        function switchMode(mode) {
+            const glider = document.getElementById('mode-glider');
+            const btnBarcode = document.getElementById('btn-barcode');
+            const btnPhoto = document.getElementById('btn-photo');
+            
+            if (mode === 'barcode') {
+                glider.style.left = '4px';
+                btnBarcode.style.color = 'white';
+                btnPhoto.style.color = 'rgba(255, 255, 255, 0.6)';
+            } else {
+                glider.style.left = 'calc(50% - 0px)';
+                btnBarcode.style.color = 'rgba(255, 255, 255, 0.6)';
+                btnPhoto.style.color = 'white';
+            }
+        }
+
+        // Initialize state
+        switchMode('barcode');
+
+        // Micro-interaction for haptic-like feel on capture
+        document.querySelector('.w-20.h-20').addEventListener('click', function() {
+            this.classList.add('scale-90');
+            setTimeout(() => {
+                this.classList.remove('scale-90');
+                // Flash effect
+                const flash = document.createElement('div');
+                flash.className = 'fixed inset-0 bg-white z-[100] pointer-events-none opacity-0';
+                document.body.appendChild(flash);
+                flash.animate([
+                    { opacity: 0 },
+                    { opacity: 0.8 },
+                    { opacity: 0 }
+                ], { duration: 200 });
+                setTimeout(() => flash.remove(), 250);
+            }, 100);
+        });
+    </script>
+</body></html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Product Details - Scan Result</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-surface": "#213145",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#6ffbbe",
+                    "surface-container": "#e5eeff",
+                    "surface-tint": "#006c49",
+                    "on-primary-fixed-variant": "#005236",
+                    "on-secondary-container": "#684000",
+                    "surface-bright": "#f8f9ff",
+                    "secondary": "#855300",
+                    "secondary-fixed": "#ffddb8",
+                    "on-surface": "#0b1c30",
+                    "primary-fixed-dim": "#4edea3",
+                    "on-surface-variant": "#3c4a42",
+                    "on-tertiary-container": "#780021",
+                    "secondary-fixed-dim": "#ffb95f",
+                    "error": "#ba1a1a",
+                    "inverse-primary": "#4edea3",
+                    "tertiary-container": "#ff7886",
+                    "on-tertiary-fixed": "#40000d",
+                    "outline-variant": "#bbcabf",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-secondary-fixed-variant": "#653e00",
+                    "on-background": "#0b1c30",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#92002a",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-variant": "#d3e4fe",
+                    "background": "#f8f9ff",
+                    "surface-dim": "#cbdbf5",
+                    "primary-container": "#10b981",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#bc0b3b",
+                    "on-primary-fixed": "#002113",
+                    "surface": "#f8f9ff",
+                    "surface-container-low": "#eff4ff",
+                    "tertiary-fixed-dim": "#ffb2b7",
+                    "tertiary-fixed": "#ffdadb",
+                    "on-primary-container": "#00422b",
+                    "secondary-container": "#fea619",
+                    "on-secondary-fixed": "#2a1700",
+                    "surface-container-high": "#dce9ff",
+                    "primary": "#006c49",
+                    "outline": "#6c7a71",
+                    "inverse-on-surface": "#eaf1ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "stack-gap": "12px",
+                    "xl": "32px",
+                    "unit": "4px",
+                    "container-padding": "20px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Inter"],
+                    "ingredient-list": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "display-score": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "ingredient-list": ["15px", {"lineHeight": "22px", "letterSpacing": "0.01em", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-score": ["48px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-lg min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-container-padding h-16 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-variant/50 transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Scan Result</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="hover:bg-surface-variant/50 transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-surface-variant">share</span>
+</button>
+<button class="hover:bg-surface-variant/50 transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-surface-variant">bookmark</span>
+</button>
+</div>
+</header>
+<main class="pt-20 px-container-padding space-y-xl max-w-2xl mx-auto">
+<!-- Product Summary Section -->
+<section class="flex items-center gap-md">
+<div class="w-24 h-24 rounded-xl overflow-hidden bg-white shadow-sm flex-shrink-0 border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Close up high-quality studio photography of a premium organic Greek yogurt container with a clean white label. The lighting is soft and natural, emphasizing the creamy texture and fresh dairy origin. The background is a minimalist, airy kitchen setting with light wood and marble surfaces, reflecting a modern clinical warmth aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvTlBkodYKeAK1hF8JNplNxTqAbr-CT2l6TQwc5MpPxTZ5kHuWgRAKLHX-YBK-8wMrMDzMVZsFI4JEEaZfUvq4uBPus3J4lDDH12NGm1_iO3OphNVyLHwOmAH_7jB8JcYr39udd_ee1UgFzwLABU9Ml2wazXLogZ4KhJbQzqELndUEprgJTtNzWaOW1fbdTOtvxKIsuNwAKoVAeJUWj1DF-jb4Psv0TwaHkxH4bo5b9DirQ020ryEPPA"/>
+</div>
+<div class="flex flex-col justify-center">
+<p class="font-label-caps text-label-caps text-secondary uppercase tracking-wider">Dairy</p>
+<h2 class="font-headline-lg text-headline-lg text-on-surface leading-tight">Organic Greek Yogurt</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">FreshDairy</p>
+</div>
+</section>
+<!-- Score Card Widget -->
+<section class="relative overflow-hidden rounded-xl bg-secondary-container/10 border border-secondary-container/20 p-md space-y-md">
+<div class="flex items-center gap-md">
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl w-24 h-24 shadow-md">
+<span class="font-display-score text-display-score">D</span>
+<span class="font-label-caps text-label-caps opacity-80">38/100</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-1 mb-1">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label-caps text-label-caps text-secondary uppercase">AI Summary</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface leading-relaxed">
+                        High added sugar content detected. Contains <span class="font-semibold">Palm Oil</span> and <span class="font-semibold">E211 preservative</span> which may impact health.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Red Flags Section -->
+<section class="space-y-stack-gap">
+<h3 class="font-headline-md text-headline-md flex items-center gap-2">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+                Red Flags
+            </h3>
+<div class="space-y-sm">
+<div class="flex items-start gap-md p-md glass-card rounded-xl">
+<div class="w-2 h-2 rounded-full bg-error mt-2 flex-shrink-0"></div>
+<div>
+<h4 class="font-semibold text-on-surface">Additive: E211</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Sodium Benzoate can trigger allergic reactions in sensitive individuals.</p>
+</div>
+</div>
+<div class="flex items-start gap-md p-md glass-card rounded-xl">
+<div class="w-2 h-2 rounded-full bg-secondary mt-2 flex-shrink-0"></div>
+<div>
+<h4 class="font-semibold text-on-surface">Saturated Fats</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Contains Palm Oil which is high in saturated fat and low in fiber.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Ingredients Accordion -->
+<section class="space-y-stack-gap">
+<h3 class="font-headline-md text-headline-md">Full Ingredients</h3>
+<div class="border border-outline-variant rounded-xl divide-y divide-outline-variant overflow-hidden bg-white">
+<details class="group" open="">
+<summary class="flex items-center justify-between p-md cursor-pointer hover:bg-surface-container-low transition-colors list-none">
+<span class="font-semibold">Main Ingredients</span>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-md pt-0 space-y-sm">
+<div class="flex justify-between items-center py-1">
+<span class="font-ingredient-list text-ingredient-list text-on-surface">Organic Milk</span>
+<span class="px-2 py-0.5 rounded-full bg-primary-container/20 text-on-primary-container text-xs font-bold">Safe</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="font-ingredient-list text-ingredient-list text-on-surface">Cane Sugar</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/20 text-on-secondary-container text-xs font-bold">Moderate</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="font-ingredient-list text-ingredient-list text-on-surface">Palm Oil</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container/40 text-on-error-container text-xs font-bold">Risk</span>
+</div>
+<div class="flex justify-between items-center py-1">
+<span class="font-ingredient-list text-ingredient-list text-on-surface">E211 Preservative</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container/40 text-on-error-container text-xs font-bold">Risk</span>
+</div>
+</div>
+</details>
+<details class="group">
+<summary class="flex items-center justify-between p-md cursor-pointer hover:bg-surface-container-low transition-colors list-none">
+<span class="font-semibold">Allergens</span>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-md pt-0">
+<p class="font-body-sm text-body-sm text-on-surface-variant">Contains: Milk. May contain traces of nuts and soy.</p>
+</div>
+</details>
+</div>
+</section>
+<!-- Healthy Alternatives Carousel -->
+<section class="space-y-stack-gap">
+<div class="flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md">Healthy Alternatives</h3>
+<button class="text-primary font-semibold text-sm">View all</button>
+</div>
+<div class="flex overflow-x-auto gap-md pb-md hide-scrollbar -mx-container-padding px-container-padding">
+<!-- Alternative Card 1 -->
+<div class="flex-none w-[160px] bg-white rounded-xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="h-28 w-full bg-surface-container relative">
+<img class="w-full h-full object-cover" data-alt="Product shot of a zero-sugar plain Icelandic yogurt, minimalist branding, bright clean studio lighting, white aesthetic, high-end commercial style, soft shadows, clinical warmth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-v5meD8Qt7swhOMQpTT41YT6k1f21h-qrEpYcPpU6_rrEbVjV324kDqQeXqKxHqHqiQsht1maajbKBcJvmhD_PonlXlse5NDKva_71jhmh8NEvAMew62YB3L1Nr1ooIaAfyvPlIB9oaORT1-A3itckV7hB_K7yeur1dlmQpVzEnZcuWNRydSFnLPVETFZ3lmuBwEaJH9iteGp9khdJno0qTqugkQzzwhFZzckxSB3oK7UgqMv2VWISw"/>
+<div class="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded">A+ 98</div>
+</div>
+<div class="p-3">
+<p class="text-[11px] text-secondary font-bold uppercase truncate">PureDairy</p>
+<h4 class="text-sm font-semibold text-on-surface leading-tight line-clamp-2">Icelandic Plain Skyr</h4>
+</div>
+</div>
+<!-- Alternative Card 2 -->
+<div class="flex-none w-[160px] bg-white rounded-xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="h-28 w-full bg-surface-container relative">
+<img class="w-full h-full object-cover" data-alt="High quality product photography of an organic low-fat probiotic yogurt with minimal packaging, bright daylight, fresh and healthy vibe, minimalist design, elegant composition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAysYp7fM0kifZZFTf9Jbktf-9GdbknQ3zHslc8e9cwyca6U_NVWf4HzfvgtBLckFoxPxP1daXUhCfOzKu94PeJDHbuDVwvnKUsGPS-KTCS-ELI33qtbf2IgqWVdIAQ-pN9Uew_Jfp_iBjhSV3766N-RIJjeC33wrR8fLcmFBJeimzZjfSPoejMaN4YKa36YfThPLRbrnr7jLaa_i4fnucH3ds4r20yQV_OcEqKVkWASXE8ULP-Avj8EQ"/>
+<div class="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded">A 92</div>
+</div>
+<div class="p-3">
+<p class="text-[11px] text-secondary font-bold uppercase truncate">BioLive</p>
+<h4 class="text-sm font-semibold text-on-surface leading-tight line-clamp-2">Organic Low Fat Probiotic</h4>
+</div>
+</div>
+<!-- Alternative Card 3 -->
+<div class="flex-none w-[160px] bg-white rounded-xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="h-28 w-full bg-surface-container relative">
+<img class="w-full h-full object-cover" data-alt="Studio photography of a premium grass-fed whole milk yogurt, thick texture, clear glass jar, minimal clean label, bright and airy environment, luxury health brand feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM5E7plojwuohczo-45Faqwcd6K0ZzETOsZt5_psUNvuv-H9lIu0yzYM29fVRlySx9HacIeLvHy-rP6lo_-RNeNTrwnAPUXbJZ1Lxrf6I4nC6S8XexHdKbHAaqM0zA6wxxCwU0HKIHxcsqho60rtD3IrjkxdrBqH3tvgjTNAf2tCZXLPC9GEd_qAMFkN9BYIGLTOWoqtQ34U9StaAC0PI7g1LOqxyaoptbjQLP-hdB_Syg_E41Wty9TQ"/>
+<div class="absolute top-2 right-2 bg-primary-container text-on-primary-container text-[10px] font-bold px-1.5 py-0.5 rounded">B+ 84</div>
+</div>
+<div class="p-3">
+<p class="text-[11px] text-secondary font-bold uppercase truncate">GrassFed</p>
+<h4 class="text-sm font-semibold text-on-surface leading-tight line-clamp-2">Whole Milk Unsweetened</h4>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-lg pb-sm pt-xs bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.04)] rounded-t-xl">
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-full w-12 h-12 active:scale-90 duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">qr_code_scanner</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined">person</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction for expanding accordions
+        document.querySelectorAll('details').forEach((el) => {
+            el.addEventListener('toggle', () => {
+                if (el.open) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            });
+        });
+
+        // Horizontal scroll peek logic
+        const carousel = document.querySelector('.hide-scrollbar');
+        if (carousel) {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            carousel.addEventListener('mousedown', (e) => {
+                isDown = true;
+                startX = e.pageX - carousel.offsetLeft;
+                scrollLeft = carousel.scrollLeft;
+            });
+            carousel.addEventListener('mouseleave', () => {
+                isDown = false;
+            });
+            carousel.addEventListener('mouseup', () => {
+                isDown = false;
+            });
+            carousel.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - carousel.offsetLeft;
+                const walk = (x - startX) * 2;
+                carousel.scrollLeft = scrollLeft - walk;
+            });
+        }
+    </script>
+</body></html>
